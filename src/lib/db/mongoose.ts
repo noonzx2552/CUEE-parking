@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+import { AppError } from "@/lib/errors";
 import { env } from "@/lib/env";
 
 declare global {
@@ -31,6 +32,23 @@ export async function connectToDatabase() {
     });
   }
 
-  globalConnection.conn = await globalConnection.promise;
-  return globalConnection.conn;
+  try {
+    globalConnection.conn = await globalConnection.promise;
+    return globalConnection.conn;
+  } catch (error) {
+    globalConnection.promise = null;
+
+    const message = error instanceof Error ? error.message : String(error);
+
+    throw new AppError(
+      "Database connection failed",
+      503,
+      true,
+      [
+        "Check MONGODB_URI on Vercel",
+        "Check MongoDB Atlas Network Access allowlist",
+        `Original error: ${message}`,
+      ],
+    );
+  }
 }
