@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 
 import { CsrfBootstrap } from "@/components/auth/csrf-bootstrap";
 import { SiteHeader } from "@/components/nav/site-header";
+import { VisitTracker } from "@/components/telemetry/visit-tracker";
 import { getCurrentUser } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 import { getLocale } from "@/lib/i18n-server";
@@ -41,6 +42,7 @@ export default async function RootLayout({
         className={`${dmSans.variable} ${ibmPlexMono.variable} antialiased`}
       >
         <CsrfBootstrap />
+        <VisitTracker />
         <SiteHeader user={user} locale={locale} />
         <main className="min-h-[calc(100vh-76px)]">{children}</main>
         <Toaster richColors position="top-right" />
