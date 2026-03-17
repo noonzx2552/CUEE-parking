@@ -5,6 +5,10 @@ import { ParkingSpaceModel } from "@/models/ParkingSpace";
 import { ReservationModel } from "@/models/Reservation";
 import { UserModel } from "@/models/User";
 
+function usernameFromEmail(email: string) {
+  return email.trim().toLowerCase().replace(/@/g, "_at_").replace(/[^a-z0-9_]/g, "_");
+}
+
 async function seed() {
   await connectToDatabase();
 
@@ -21,6 +25,7 @@ async function seed() {
   const [admin, opsAdmin, demoUser] = await UserModel.create([
     {
       name: "CUEE Admin",
+      username: usernameFromEmail("admin@cuee.local"),
       email: "admin@cuee.local",
       passwordHash: adminPasswordHash,
       role: "admin",
@@ -28,6 +33,7 @@ async function seed() {
     },
     {
       name: "Operations Admin",
+      username: usernameFromEmail("opsadmin@cuee.local"),
       email: "opsadmin@cuee.local",
       passwordHash: opsAdminPasswordHash,
       role: "admin",
@@ -35,6 +41,7 @@ async function seed() {
     },
     {
       name: "Demo User",
+      username: usernameFromEmail("user@cuee.local"),
       email: "user@cuee.local",
       passwordHash: userPasswordHash,
       role: "user",

@@ -8,6 +8,10 @@ import { createAuditLog } from "@/lib/services/audit-log";
 import { sendDiscordEvent } from "@/lib/services/discord";
 import { getRequestContext } from "@/lib/security/request";
 
+function usernameFromEmail(email: string) {
+  return email.trim().toLowerCase().replace(/@/g, "_at_").replace(/[^a-z0-9_]/g, "_");
+}
+
 export async function registerUser(input: {
   name: string;
   email: string;
@@ -24,6 +28,7 @@ export async function registerUser(input: {
   const passwordHash = await bcrypt.hash(input.password, 12);
   const user = await UserModel.create({
     name: input.name,
+    username: usernameFromEmail(input.email),
     email: input.email,
     passwordHash,
     role: "user",

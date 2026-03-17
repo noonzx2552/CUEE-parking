@@ -6,6 +6,52 @@ import { ParkingSpaceModel } from "@/models/ParkingSpace";
 import { ReservationModel } from "@/models/Reservation";
 import { UserModel } from "@/models/User";
 
+let defaultParkingBootstrapPromise: Promise<void> | null = null;
+
+function getDefaultParkingSpaces() {
+  return [
+    ...Array.from({ length: 8 }, (_, index) => ({
+      code: `A${String(index + 1).padStart(2, "0")}`,
+      zone: "A",
+      type: index < 2 ? "ev" : "normal",
+      status: "available",
+      description: "Main building parking",
+    })),
+    ...Array.from({ length: 8 }, (_, index) => ({
+      code: `B${String(index + 1).padStart(2, "0")}`,
+      zone: "B",
+      type: index === 0 ? "disabled" : "normal",
+      status: "available",
+      description: "Faculty parking area",
+    })),
+    ...Array.from({ length: 4 }, (_, index) => ({
+      code: `VIP${String(index + 1).padStart(2, "0")}`,
+      zone: "VIP",
+      type: "normal",
+      status: index === 0 ? "maintenance" : "available",
+      description: "Reserved for special access",
+    })),
+  ];
+}
+
+async function ensureDefaultParkingSpaces() {
+  if (!defaultParkingBootstrapPromise) {
+    defaultParkingBootstrapPromise = (async () => {
+      const count = await ParkingSpaceModel.countDocuments();
+      if (count > 0) {
+        return;
+      }
+
+      await ParkingSpaceModel.insertMany(getDefaultParkingSpaces(), { ordered: false });
+    })().catch((error) => {
+      defaultParkingBootstrapPromise = null;
+      throw error;
+    });
+  }
+
+  await defaultParkingBootstrapPromise;
+}
+
 export async function getParkingSpaces(filters?: {
   zone?: string;
   type?: string;
@@ -13,6 +59,7 @@ export async function getParkingSpaces(filters?: {
   search?: string;
 }) {
   await connectToDatabase();
+  await ensureDefaultParkingSpaces();
 
   const query: Record<string, unknown> = {};
   if (filters?.zone) query.zone = filters.zone;
@@ -25,6 +72,7 @@ export async function getParkingSpaces(filters?: {
 
 export async function getParkingSpaceById(id: string) {
   await connectToDatabase();
+  await ensureDefaultParkingSpaces();
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return null;
   }
@@ -55,6 +103,7 @@ export async function getAdminUsers() {
 
 export async function getAdminStats() {
   await connectToDatabase();
+  await ensureDefaultParkingSpaces();
   const now = new Date();
   const todayStart = startOfDay(now);
   const todayEnd = endOfDay(now);

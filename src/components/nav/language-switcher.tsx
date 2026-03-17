@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 export function LanguageSwitcher({ locale }: { locale: Locale }) {
   const router = useRouter();
@@ -14,23 +14,31 @@ export function LanguageSwitcher({ locale }: { locale: Locale }) {
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1">
-      <Button
+    <div className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white/95 p-1 shadow-sm">
+      <button
         type="button"
-        variant={locale === "en" ? "secondary" : "ghost"}
-        className="h-9 px-3"
+        className={cn(
+          "min-w-12 rounded-xl px-3 py-2 text-xs font-semibold tracking-[0.18em] transition",
+          locale === "en"
+            ? "bg-zinc-950 text-white shadow-sm"
+            : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900",
+        )}
         onClick={() => setLocale("en")}
       >
         EN
-      </Button>
-      <Button
+      </button>
+      <button
         type="button"
-        variant={locale === "th" ? "secondary" : "ghost"}
-        className="h-9 px-3"
+        className={cn(
+          "min-w-12 rounded-xl px-3 py-2 text-xs font-semibold tracking-[0.18em] transition",
+          locale === "th"
+            ? "bg-zinc-950 text-white shadow-sm"
+            : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900",
+        )}
         onClick={() => setLocale("th")}
       >
         TH
-      </Button>
+      </button>
     </div>
   );
 }

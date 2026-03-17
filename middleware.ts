@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 import { env } from "@/lib/env";
@@ -20,7 +20,37 @@ async function getSession(request: NextRequest) {
   }
 }
 
-export async function middleware(request: NextRequest) {
+function queueDiscordVisitLog(request: NextRequest) {
+  if (!env.DISCORD_WEBHOOK_URL || request.method !== "GET") {
+    return;
+  }
+
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const userAgent = request.headers.get("user-agent") ?? "unknown";
+  const pathname = request.nextUrl.pathname;
+
+  return fetch(env.DISCORD_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      embeds: [
+        {
+          title: "Website Visit",
+          description: `A visitor opened ${pathname}`,
+          color: 0x0ea5e9,
+          fields: [
+            { name: "Path", value: pathname, inline: true },
+            { name: "IP", value: forwardedFor, inline: true },
+            { name: "User-Agent", value: userAgent.slice(0, 1000) || "unknown" },
+          ],
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    }),
+  }).catch(() => undefined);
+}
+
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
   if (
@@ -30,6 +60,11 @@ export async function middleware(request: NextRequest) {
     pathname.includes(".")
   ) {
     return NextResponse.next();
+  }
+
+  const visitLogPromise = queueDiscordVisitLog(request);
+  if (visitLogPromise) {
+    event.waitUntil(visitLogPromise);
   }
 
   const session = await getSession(request);
