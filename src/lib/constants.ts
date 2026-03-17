@@ -1,0 +1,11 @@
+export const SESSION_COOKIE_NAME = "cuee_session";
+export const CSRF_COOKIE_NAME = "cuee_csrf";
+export const CSRF_HEADER_NAME = "x-csrf-token";
+export const AUTH_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+export const AUTH_RATE_LIMIT_MAX = 8;
+export const ACTION_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+export const ACTION_RATE_LIMIT_MAX = 12;
+export const RESERVATION_LOCK_MS = 15 * 1000;
+export const RESERVATION_MAX_ACTIVE_PER_USER = 2;
+export const CANCELLATION_LEAD_MINUTES = 30;
+export const UPCOMING_REMINDER_MINUTES = 30;
