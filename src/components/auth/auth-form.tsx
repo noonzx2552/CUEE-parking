@@ -86,6 +86,7 @@ export function AuthForm({
     { label: text.auth.checks.number, passed: /\d/.test(passwordValue) },
     { label: text.auth.checks.symbol, passed: /[^A-Za-z0-9]/.test(passwordValue) },
   ];
+  const isRegisterPasswordStrongEnough = passwordStrength.key === "strong" || passwordStrength.key === "very-strong";
 
   const submitHandler = form.handleSubmit(async (values) => {
     const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
@@ -177,11 +178,21 @@ export function AuthForm({
               </span>
               <span className="text-zinc-500">{text.auth.passwordHint}</span>
             </div>
+            {!isRegisterPasswordStrongEnough ? (
+              <p className="text-xs text-amber-600">
+                {isThai ? "ต้องได้ระดับ แข็งแรง หรือ แข็งแรงมาก จึงจะสมัครได้" : "Password must reach Strong or Very strong to register."}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>
 
-      <Button type="button" className="w-full gap-2" disabled={form.formState.isSubmitting} onClick={() => void submitHandler()}>
+      <Button
+        type="button"
+        className="w-full gap-2"
+        disabled={form.formState.isSubmitting || (mode === "register" && !isRegisterPasswordStrongEnough)}
+        onClick={() => void submitHandler()}
+      >
         {form.formState.isSubmitting ? (
           <>
             <Spinner className="text-white" />

@@ -82,7 +82,7 @@ export function LineConnectLauncher({
         <div className="space-y-2">
           <p className="text-lg font-semibold text-zinc-950">เชื่อมต่อ LINE กับระบบ</p>
           <p className="text-sm leading-6 text-zinc-600">
-            กดปุ่มด้านล่างเพื่อเปิด LINE แล้วเชื่อมบัญชีของคุณกับระบบแจ้งเตือนอัตโนมัติ
+            กดปุ่มด้านล่างเพื่อเปิด LINE ของระบบ จากนั้นให้กดส่งข้อความในแชตด้วย เพื่อให้ระบบรับคำสั่ง bind และผูกบัญชีให้สำเร็จ
           </p>
         </div>
       </div>
@@ -112,7 +112,7 @@ export function LineConnectLauncher({
         <p className="mt-2 text-sm text-zinc-600">
           {hasLineConnection
             ? "ระบบพร้อมส่งแจ้งเตือนการจองเข้า LINE ของคุณ"
-            : "เมื่อกดปุ่ม ระบบจะพาไปที่ LINE เพื่อเริ่มการเชื่อมต่อทันที"}
+            : "หลังจาก LINE เปิดขึ้นมาแล้ว ให้กดส่งข้อความในแชตทันที แล้วรอข้อความตอบกลับว่าเชื่อมต่อสำเร็จ"}
         </p>
       </div>
     </div>

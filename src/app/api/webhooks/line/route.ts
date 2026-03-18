@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { withErrorHandler, jsonOk } from "@/lib/api";
 import { env } from "@/lib/env";
 import { connectToDatabase } from "@/lib/db/mongoose";
+import { replyLineMessage } from "@/lib/services/line";
 import { UserModel } from "@/models/User";
 
 function verifySignature(rawBody: string, signature: string | null) {
@@ -25,6 +26,7 @@ export const POST = withErrorHandler(async (request) => {
   const body = JSON.parse(rawBody) as {
     events?: Array<{
       type?: string;
+      replyToken?: string;
       source?: { userId?: string };
       message?: { text?: string };
     }>;
@@ -38,6 +40,7 @@ export const POST = withErrorHandler(async (request) => {
     const message = event.message?.text?.trim() ?? "";
     const normalized = message.toLowerCase();
     const sourceUserId = event.source?.userId;
+    const replyToken = event.replyToken;
 
     if (!sourceUserId || !normalized.startsWith("bind ")) {
       continue;
@@ -66,17 +69,25 @@ export const POST = withErrorHandler(async (request) => {
     );
 
     if (tokenBoundUser) {
+      await replyLineMessage(replyToken, ["เชื่อมต่อ LINE กับระบบสำเร็จแล้ว"]);
       continue;
     }
 
     const email = bindValue.toLowerCase();
-    await UserModel.findOneAndUpdate(
+    const emailBoundUser = await UserModel.findOneAndUpdate(
       { email },
       {
         $set: { lineUserId: sourceUserId },
         $unset: { lineBindToken: 1, lineBindExpiresAt: 1 },
       },
     );
+
+    if (emailBoundUser) {
+      await replyLineMessage(replyToken, ["เชื่อมต่อ LINE กับระบบสำเร็จแล้ว"]);
+      continue;
+    }
+
+    await replyLineMessage(replyToken, ["ไม่พบรหัสเชื่อมต่อหรือรหัสหมดอายุแล้ว กรุณากลับไปสร้างรหัสใหม่ในระบบ"]);
   }
 
   return jsonOk({ ok: true });
