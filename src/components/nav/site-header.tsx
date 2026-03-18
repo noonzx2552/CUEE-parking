@@ -36,7 +36,7 @@ export function SiteHeader({
         <div className="hidden items-center gap-4 md:flex">
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-right">
             <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-              {locale === "th" ? "เวลาเซิร์ฟเวอร์ (ไทย)" : "Server Time (TH)"}
+              {locale === "th" ? "เวลาเซิร์ฟเวอร์" : "Server Time"}
             </p>
             <p className="font-mono text-sm text-zinc-900">{serverTimeLabel}</p>
           </div>
