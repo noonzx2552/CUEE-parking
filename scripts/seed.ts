@@ -50,29 +50,13 @@ async function seed() {
     },
   ]);
 
-  const spaces = [
-    ...Array.from({ length: 2 }, (_, index) => ({
-      code: `A${String(index + 1).padStart(2, "0")}`,
-      zone: "A",
-      type: index === 0 ? "ev" : "normal",
-      status: "available",
-      description: "Main building parking",
-    })),
-    ...Array.from({ length: 1 }, (_, index) => ({
-      code: `B${String(index + 1).padStart(2, "0")}`,
-      zone: "B",
-      type: "disabled",
-      status: "available",
-      description: "Faculty parking area",
-    })),
-    ...Array.from({ length: 1 }, (_, index) => ({
-      code: `VIP${String(index + 1).padStart(2, "0")}`,
-      zone: "VIP",
-      type: "normal",
-      status: "maintenance",
-      description: "Reserved for special access",
-    })),
-  ];
+  const spaces = Array.from({ length: 4 }, (_, index) => ({
+    code: `A${String(index + 1).padStart(2, "0")}`,
+    zone: "A",
+    type: index < 2 ? "ev" : "normal",
+    status: "available",
+    description: "Main building parking",
+  }));
 
   const parkingSpaces = await ParkingSpaceModel.create(spaces);
   const startTime = new Date(Date.now() + 60 * 60 * 1000);

@@ -3,29 +3,28 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addDays, format, parseISO } from "date-fns";
 import { th } from "date-fns/locale";
-import { CalendarDays, Clock3, MapPinned } from "lucide-react";
+import { CalendarDays, Check, Clock3, MapPinned, ShieldCheck, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useDeferredValue, useMemo, useState } from "react";
+import { startTransition, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { calculateParkingFee, formatParkingFee, type ParkingFeeConfig } from "@/lib/parking-fees";
-import { cn } from "@/lib/utils";
+import { cn, parkingStatusColor } from "@/lib/utils";
 import { getCsrfToken } from "@/lib/web/csrf";
 import { reservationCreateSchema } from "@/lib/validators/reservation";
-import type { ParkingType } from "@/types";
+import type { ParkingType, ParkingStatus } from "@/types";
 
 type SpaceOption = {
   _id: string;
   code: string;
   zone: string;
   type: ParkingType;
-  status: "available" | "reserved" | "occupied" | "maintenance";
+  status: ParkingStatus;
 };
 
 const reservationFormSchema = z.object({
@@ -64,6 +63,25 @@ function getDateOptions() {
   });
 }
 
+function getParkingTypeIcon(type: ParkingType) {
+  if (type === "ev") return <Zap className="h-4 w-4" />;
+  if (type === "disabled") return <ShieldCheck className="h-4 w-4" />;
+  return <MapPinned className="h-4 w-4" />;
+}
+
+function translateStatus(status: ParkingStatus) {
+  switch (status) {
+    case "available":
+      return "ว่าง";
+    case "reserved":
+      return "ถูกจอง";
+    case "occupied":
+      return "มีรถจอด";
+    case "maintenance":
+      return "ปิดปรับปรุง";
+  }
+}
+
 export function ReservationForm({
   parkingSpaceId,
   spaces,
@@ -76,7 +94,6 @@ export function ReservationForm({
   feeConfig: ParkingFeeConfig;
 }) {
   const router = useRouter();
-  const [spotSearch, setSpotSearch] = useState("");
   const form = useForm<FormValues>({
     resolver: zodResolver(reservationFormSchema),
     defaultValues: {
@@ -92,23 +109,15 @@ export function ReservationForm({
   const startClock = useWatch({ control: form.control, name: "startClock" }) ?? "08:00";
   const endClock = useWatch({ control: form.control, name: "endClock" }) ?? "09:00";
   const selectedSpaceId = useWatch({ control: form.control, name: "parkingSpaceId" }) ?? parkingSpaceId ?? "";
-  const deferredSpotSearch = useDeferredValue(spotSearch);
+
   const dateOptions = useMemo(() => getDateOptions(), []);
-  const visibleSpaces = useMemo(() => {
-    if (!deferredSpotSearch.trim()) {
-      return spaces;
-    }
-
-    const needle = deferredSpotSearch.trim().toLowerCase();
-    return spaces.filter((space) => space.code.toLowerCase().includes(needle));
-  }, [deferredSpotSearch, spaces]);
-
   const selectedDateLabel =
     dateOptions.find((item) => item.value === bookingDate)?.longLabel ??
     format(parseISO(bookingDate), "d MMMM yyyy", { locale: th });
 
-  const selectedSpace = spaces.find((space) => space._id === selectedSpaceId);
   const endTimeOptions = timeSlots.filter((slot) => slot > startClock);
+  const selectedSpace = spaces.find((space) => space._id === selectedSpaceId);
+  const selectableSpaces = spaces.filter((space) => space.status !== "maintenance");
   const feePreview = selectedSpace
     ? calculateParkingFee({
         type: selectedSpace.type,
@@ -158,28 +167,53 @@ export function ReservationForm({
         });
       })}
     >
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">ค้นหาช่องจอด</label>
-          <Input
-            value={spotSearch}
-            onChange={(event) => setSpotSearch(event.target.value.toUpperCase())}
-            placeholder="พิมพ์รหัส เช่น A01, B04"
-          />
-          <p className="text-xs text-zinc-500">พิมพ์รหัสช่องที่ต้องการ หรือเลือกจากรายการด้านล่าง</p>
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-950">1. เลือกช่องจอด</h2>
+          <p className="mt-1 text-sm text-zinc-500">ตอนนี้มีเพียง 4 ช่อง เลือกได้จากการ์ดด้านล่างเลย</p>
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-zinc-700">เลือกช่องจอด</label>
-          <Select {...form.register("parkingSpaceId")} disabled={disabled}>
-            <option value="">เลือกช่องจอด</option>
-            {visibleSpaces.map((space) => (
-              <option key={space._id} value={space._id}>
-                {space.code} | Zone {space.zone} | {space.status}
-              </option>
-            ))}
-          </Select>
-          <p className="text-xs text-rose-600">{String(form.formState.errors.parkingSpaceId?.message ?? "")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {spaces.map((space) => {
+            const active = selectedSpaceId === space._id;
+            const unavailable = space.status === "maintenance";
+
+            return (
+              <button
+                key={space._id}
+                type="button"
+                disabled={unavailable || disabled}
+                onClick={() => form.setValue("parkingSpaceId", space._id, { shouldValidate: true })}
+                className={cn(
+                  "rounded-3xl border p-4 text-left transition",
+                  unavailable && "cursor-not-allowed border-zinc-200 bg-zinc-50 opacity-70",
+                  active && !unavailable && "border-sky-600 bg-sky-50 shadow-lg shadow-sky-100",
+                  !active && !unavailable && "border-zinc-200 bg-white hover:border-sky-200 hover:bg-sky-50/50",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xl font-semibold text-zinc-950">{space.code}</p>
+                    <p className="text-sm text-zinc-500">โซน {space.zone}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", parkingStatusColor(space.status))}>
+                      {translateStatus(space.status)}
+                    </span>
+                    {active && !unavailable ? <Check className="h-4 w-4 text-sky-700" /> : null}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-sm text-zinc-600">
+                  {getParkingTypeIcon(space.type)}
+                  <span>{space.type === "ev" ? "EV" : space.type === "disabled" ? "ผู้พิการ" : "ปกติ"}</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
+        <p className="text-xs text-rose-600">{String(form.formState.errors.parkingSpaceId?.message ?? "")}</p>
+        {!selectableSpaces.length ? (
+          <p className="text-sm text-rose-600">ตอนนี้ยังไม่มีช่องที่พร้อมให้จอง</p>
+        ) : null}
       </div>
 
       <div className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-sm">
@@ -188,10 +222,8 @@ export function ReservationForm({
             <CalendarDays className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-zinc-950">เลือกวันและเวลา</h2>
-            <p className="mt-1 text-sm leading-7 text-zinc-500">
-              เลือกวันก่อน แล้วกำหนดเวลาเริ่มและเวลาสิ้นสุดให้เรียบร้อย
-            </p>
+            <h2 className="text-xl font-semibold text-zinc-950">2. เลือกวันและเวลา</h2>
+            <p className="mt-1 text-sm leading-7 text-zinc-500">เลือกวันก่อน แล้วกำหนดเวลาเริ่มและเวลาสิ้นสุด</p>
           </div>
         </div>
 
@@ -245,7 +277,6 @@ export function ReservationForm({
               ))}
             </Select>
             <p className="mt-3 text-2xl font-semibold text-zinc-950">{displayTime(startClock)}</p>
-            <p className="mt-1 text-sm text-zinc-500">เวลาเริ่มต้นที่คุณต้องการเข้าจอด</p>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
@@ -264,7 +295,6 @@ export function ReservationForm({
               ))}
             </Select>
             <p className="mt-3 text-2xl font-semibold text-zinc-950">{displayTime(endClock)}</p>
-            <p className="mt-1 text-sm text-zinc-500">ต้องมากกว่าเวลาเริ่มเสมอ</p>
           </div>
         </div>
 
@@ -274,12 +304,14 @@ export function ReservationForm({
             <p className="mt-2 text-lg font-semibold text-zinc-950">{selectedDateLabel}</p>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">เริ่มจอด</p>
-            <p className="mt-2 text-lg font-semibold text-zinc-950">{displayTime(startClock)}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">ช่องจอด</p>
+            <p className="mt-2 text-lg font-semibold text-zinc-950">{selectedSpace?.code ?? "-"}</p>
           </div>
           <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">สิ้นสุด</p>
-            <p className="mt-2 text-lg font-semibold text-zinc-950">{displayTime(endClock)}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">ช่วงเวลา</p>
+            <p className="mt-2 text-lg font-semibold text-zinc-950">
+              {displayTime(startClock)} - {displayTime(endClock)}
+            </p>
           </div>
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-emerald-700">ค่าจอด</p>
@@ -294,8 +326,8 @@ export function ReservationForm({
 
         {feePreview ? (
           <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-7 text-emerald-900">
-            ค่าจอดคำนวณจากประเภท {selectedSpace?.type ?? "-"} ระยะเวลา {feePreview.durationHours.toFixed(2)} ชั่วโมง
-            รวม {formatParkingFee(feePreview.total, feePreview.currency)}
+            ค่าจอดคำนวณจากระยะเวลา {feePreview.durationHours.toFixed(2)} ชั่วโมง รวม{" "}
+            {formatParkingFee(feePreview.total, feePreview.currency)}
           </div>
         ) : null}
 
@@ -305,7 +337,7 @@ export function ReservationForm({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-700">รายละเอียดเพิ่มเติม</label>
+        <label className="text-sm font-medium text-zinc-700">3. รายละเอียดเพิ่มเติม</label>
         <Textarea {...form.register("note")} placeholder="ทะเบียนรถ หรือรายละเอียดที่อยากแจ้ง" />
       </div>
 
@@ -313,15 +345,13 @@ export function ReservationForm({
         <div className="flex items-start gap-3">
           <MapPinned className="mt-0.5 h-5 w-5 text-sky-700" />
           <div>
-            <p className="font-medium text-zinc-900">ตรวจสอบอีกครั้งก่อนยืนยัน</p>
-            <p className="mt-1 text-sm text-zinc-500">
-              ระบบจะจองตามช่อง วันที่ เวลา และค่าจอดที่แสดงด้านบน
-            </p>
+            <p className="font-medium text-zinc-900">ตรวจสอบก่อนยืนยัน</p>
+            <p className="mt-1 text-sm text-zinc-500">ระบบจะจองตามช่อง วันที่ เวลา และค่าจอดที่แสดงด้านบน</p>
           </div>
         </div>
       </div>
 
-      <Button disabled={disabled || form.formState.isSubmitting} type="submit">
+      <Button disabled={disabled || form.formState.isSubmitting || !selectableSpaces.length} type="submit">
         {form.formState.isSubmitting ? "กำลังบันทึก..." : "ยืนยันการจอง"}
       </Button>
     </form>

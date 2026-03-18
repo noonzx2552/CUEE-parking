@@ -37,25 +37,64 @@ export default async function ParkingPage({
     Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
   ).toString();
 
+  const totalSpaces = spaces.length;
+  const availableSpaces = spaces.filter((space) => space.status === "available").length;
+  const activeSpaces = spaces.filter((space) => ["reserved", "occupied"].includes(space.status)).length;
+  const maintenanceSpaces = spaces.filter((space) => space.status === "maintenance").length;
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-      <div>
+      <div className="space-y-3">
         <p className="text-sm uppercase tracking-[0.2em] text-sky-700">
           {isThai ? "สถานะที่จอดรถ" : "Parking availability"}
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-zinc-950">
-          {isThai ? "เลือกดูช่องจอดรถ" : "Browse parking spaces"}
-        </h1>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold text-zinc-950">
+              {isThai ? "เลือกช่องจอดรถ" : "Choose a parking space"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+              {isThai
+                ? "ตอนนี้ระบบเริ่มต้นด้วยที่จอด 4 ช่อง เลือกช่องที่ต้องการแล้วกดจองได้ทันที"
+                : "The system currently starts with 4 spaces. Pick the one you want and reserve it directly."}
+            </p>
+          </div>
+          <Link
+            href="/reservations/new"
+            className="inline-flex h-11 items-center rounded-2xl bg-zinc-950 px-4 text-sm font-medium text-white"
+          >
+            {isThai ? "เปิดหน้าจอง" : "Open booking"}
+          </Link>
+        </div>
       </div>
 
-      <Card>
-        <form className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="rounded-3xl">
+          <p className="text-sm text-zinc-500">{isThai ? "ทั้งหมด" : "Total"}</p>
+          <p className="mt-2 text-3xl font-semibold text-zinc-950">{totalSpaces}</p>
+        </Card>
+        <Card className="rounded-3xl">
+          <p className="text-sm text-zinc-500">{isThai ? "ว่าง" : "Available"}</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-700">{availableSpaces}</p>
+        </Card>
+        <Card className="rounded-3xl">
+          <p className="text-sm text-zinc-500">{isThai ? "กำลังใช้งาน" : "In use"}</p>
+          <p className="mt-2 text-3xl font-semibold text-sky-700">{activeSpaces}</p>
+        </Card>
+        <Card className="rounded-3xl">
+          <p className="text-sm text-zinc-500">{isThai ? "ปิดปรับปรุง" : "Maintenance"}</p>
+          <p className="mt-2 text-3xl font-semibold text-rose-700">{maintenanceSpaces}</p>
+        </Card>
+      </div>
+
+      <Card className="rounded-3xl">
+        <form className="grid gap-4 md:grid-cols-[1.5fr_1fr_1fr_1fr_auto]">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">{isThai ? "ช่องจอด" : "Parking spot"}</label>
+            <label className="text-sm font-medium text-zinc-700">{isThai ? "ค้นหารหัสช่อง" : "Search code"}</label>
             <Input
               name="search"
               defaultValue={filters.search ?? ""}
-              placeholder={isThai ? "พิมพ์รหัส เช่น A01" : "Enter code, e.g. A01"}
+              placeholder={isThai ? "เช่น A01 หรือ A04" : "For example A01 or A04"}
             />
           </div>
           <div className="space-y-2">
@@ -63,8 +102,6 @@ export default async function ParkingPage({
             <Select name="zone" defaultValue={filters.zone ?? ""}>
               <option value="">{isThai ? "ทุกโซน" : "All zones"}</option>
               <option value="A">A</option>
-              <option value="B">B</option>
-              <option value="VIP">VIP</option>
             </Select>
           </div>
           <div className="space-y-2">
@@ -87,8 +124,8 @@ export default async function ParkingPage({
             </Select>
           </div>
           <div className="flex items-end">
-            <button className="h-11 rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white" type="submit">
-              {isThai ? "ค้นหา" : "Apply filters"}
+            <button className="h-11 rounded-2xl bg-sky-600 px-4 text-sm font-medium text-white" type="submit">
+              {isThai ? "ค้นหา" : "Filter"}
             </button>
           </div>
         </form>
@@ -101,23 +138,23 @@ export default async function ParkingPage({
         scannableSpaceIds={scannableSpaceIds}
       />
 
-      <Card className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-950">
-            {isThai ? "การจองและสแกน" : "Booking and scanning"}
-          </h2>
-          <p className="mt-2 text-sm text-zinc-600">
-            {isThai
-              ? "เริ่มต้นแต่ละช่องจะมีแค่ปุ่มจองก่อน เมื่อคุณมีรายการจองแล้ว ปุ่มสแกนจะขึ้นเฉพาะช่องที่คุณจองอยู่เท่านั้น"
-              : "Each space starts with only the reserve button. After you book, scan access appears only on the space you reserved."}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/reservations/new" className="inline-flex h-11 items-center rounded-xl bg-sky-600 px-4 text-sm font-medium text-white">
-            {isThai ? "เปิดหน้าจอง" : "Open booking"}
-          </Link>
+      <Card className="rounded-3xl">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-950">
+              {isThai ? "จองและสแกนได้ง่ายขึ้น" : "Booking and scanning made simpler"}
+            </h2>
+            <p className="mt-2 text-sm text-zinc-600">
+              {isThai
+                ? "เริ่มต้นทุกช่องจะมีแค่ปุ่มจองก่อน และปุ่มสแกนจะขึ้นเฉพาะช่องที่คุณจองอยู่เท่านั้น"
+                : "Each card starts with only a reserve action, and scan access appears only on the space you booked."}
+            </p>
+          </div>
           {scannableSpaceIds.length ? (
-            <Link href="/scan" className="inline-flex h-11 items-center rounded-xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700">
+            <Link
+              href="/scan"
+              className="inline-flex h-11 items-center rounded-2xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700"
+            >
               {isThai ? "เปิดหน้าสแกน" : "Open scanner"}
             </Link>
           ) : null}
@@ -126,3 +163,5 @@ export default async function ParkingPage({
     </div>
   );
 }
+
+

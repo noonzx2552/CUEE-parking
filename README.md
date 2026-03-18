@@ -72,7 +72,7 @@ Seed contents:
 
 - 1 admin user
 - 1 demo user
-- 4 parking spaces across `A`, `B`, and `VIP`
+- 4 parking spaces: `A01`, `A02`, `A03`, and `A04`
 - 1 demo reservation
 
 ## Main routes
@@ -201,3 +201,4 @@ If `DISCORD_WEBHOOK_URL` is present, the app sends important operational events 
 - Add full admin edit/delete actions in the UI for users and reservations.
 - Add dedicated scheduled execution for `/api/jobs/reconcile-reservations` on the hosting platform.
 - Add formal LINE Login binding instead of manual ID entry.
+

@@ -72,7 +72,7 @@ export default async function Home() {
                 </div>
                 <div className="rounded-2xl bg-white/10 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-sky-100/70">{text.home.zones}</p>
-                  <p className="mt-2 text-3xl font-semibold">A / B / VIP</p>
+                  <p className="mt-2 text-3xl font-semibold">A01 - A04</p>
                 </div>
               </div>
             </div>

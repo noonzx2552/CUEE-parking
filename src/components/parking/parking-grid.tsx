@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CarFront, QrCode, ShieldCheck, Zap } from "lucide-react";
+import { CarFront, QrCode, ShieldCheck, Wrench, Zap } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,7 @@ function translateParkingType(type: ParkingType, isThai: boolean) {
 }
 
 function translateParkingStatus(status: ParkingStatus, isThai: boolean) {
-  if (!isThai) {
-    return toTitleCase(status);
-  }
+  if (!isThai) return toTitleCase(status);
 
   switch (status) {
     case "available":
@@ -47,7 +45,20 @@ function translateParkingStatus(status: ParkingStatus, isThai: boolean) {
 function getParkingTypeIcon(type: ParkingType) {
   if (type === "ev") return <Zap className="h-4 w-4" />;
   if (type === "disabled") return <ShieldCheck className="h-4 w-4" />;
-  return null;
+  return <CarFront className="h-4 w-4" />;
+}
+
+function getStatusHint(status: ParkingStatus, isThai: boolean) {
+  switch (status) {
+    case "available":
+      return isThai ? "พร้อมจองได้ทันที" : "Ready to reserve now";
+    case "reserved":
+      return isThai ? "มีการจองรอใช้งาน" : "Reserved for an upcoming booking";
+    case "occupied":
+      return isThai ? "มีรถอยู่ในช่องจอดนี้" : "A car is currently parked here";
+    case "maintenance":
+      return isThai ? "ยังไม่พร้อมให้ใช้งาน" : "Temporarily unavailable";
+  }
 }
 
 export function ParkingGrid({
@@ -83,7 +94,7 @@ export function ParkingGrid({
 
   if (!spaces.length) {
     return (
-      <Card>
+      <Card className="rounded-3xl border-dashed">
         <p className="text-sm text-zinc-500">
           {isThai ? "ไม่พบช่องจอดที่ตรงกับตัวกรองที่เลือก" : "No parking spaces match the selected filters."}
         </p>
@@ -95,54 +106,71 @@ export function ParkingGrid({
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {spaces.map((space) => {
         const canScan = scannableSpaceIds.includes(space._id);
+        const isMaintenance = space.status === "maintenance";
 
         return (
-          <Card key={space._id} className="space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-lg font-semibold text-zinc-900">{space.code}</p>
-                <p className="text-sm text-zinc-500">{isThai ? `โซน ${space.zone}` : `Zone ${space.zone}`}</p>
+          <Card
+            key={space._id}
+            className={`rounded-3xl border transition ${
+              isMaintenance ? "border-rose-200 bg-rose-50/30" : "border-zinc-200 bg-white"
+            }`}
+          >
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-2xl font-semibold tracking-tight text-zinc-950">{space.code}</p>
+                  <p className="text-sm text-zinc-500">{isThai ? `โซน ${space.zone}` : `Zone ${space.zone}`}</p>
+                </div>
+                <Badge className={parkingStatusColor(space.status)}>
+                  {translateParkingStatus(space.status, isThai)}
+                </Badge>
               </div>
-              <Badge className={parkingStatusColor(space.status)}>
-                {translateParkingStatus(space.status, isThai)}
-              </Badge>
-            </div>
 
-            <div className="flex items-center gap-3 text-sm text-zinc-600">
-              {getParkingTypeIcon(space.type)}
-              <span>{translateParkingType(space.type, isThai)}</span>
-            </div>
-
-            {space.status === "occupied" ? (
-              <div className="flex items-center gap-3 text-sm font-medium text-zinc-700">
-                <CarFront className="h-4 w-4" />
-                <span>{isThai ? "มีรถจอดอยู่" : "Car is parked"}</span>
+              <div className="flex items-center gap-2 rounded-2xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+                {getParkingTypeIcon(space.type)}
+                <span>{translateParkingType(space.type, isThai)}</span>
               </div>
-            ) : null}
 
-            <p className="text-sm text-zinc-600">
-              {space.description || (isThai ? "ไม่มีรายละเอียดเพิ่มเติม" : "No additional notes")}
-            </p>
+              <div className="rounded-2xl border border-zinc-200/80 bg-white/80 px-3 py-3 text-sm text-zinc-600">
+                {space.status === "occupied" ? (
+                  <div className="flex items-center gap-2 font-medium text-zinc-800">
+                    <CarFront className="h-4 w-4" />
+                    <span>{isThai ? "มีรถจอดอยู่ตอนนี้" : "A car is parked right now"}</span>
+                  </div>
+                ) : space.status === "maintenance" ? (
+                  <div className="flex items-center gap-2 font-medium text-rose-700">
+                    <Wrench className="h-4 w-4" />
+                    <span>{isThai ? "ช่องนี้ปิดปรับปรุงชั่วคราว" : "This space is under maintenance"}</span>
+                  </div>
+                ) : (
+                  <p>{getStatusHint(space.status, isThai)}</p>
+                )}
+              </div>
 
-            <div className={`grid gap-2 pt-2 ${canScan ? "sm:grid-cols-2" : ""}`}>
-              {space.status === "maintenance" ? (
-                <Button className="w-full" disabled>
-                  {isThai ? "จองช่องนี้" : "Reserve this spot"}
-                </Button>
-              ) : (
-                <Link href={`/reservations/new?parkingSpaceId=${space._id}`}>
-                  <Button className="w-full">{isThai ? "จองช่องนี้" : "Reserve this spot"}</Button>
-                </Link>
-              )}
+              <p className="text-sm leading-6 text-zinc-600">
+                {space.description || (isThai ? "ไม่มีรายละเอียดเพิ่มเติม" : "No additional notes")}
+              </p>
 
-              {canScan ? (
-                <Link href="/scan">
-                  <Button variant="ghost" className="w-full gap-2">
-                    <QrCode className="h-4 w-4" />
-                    {isThai ? "สแกนเข้าออก" : "Scan access"}
+              <div className={`grid gap-2 pt-2 ${canScan ? "sm:grid-cols-2" : ""}`}>
+                {isMaintenance ? (
+                  <Button className="w-full rounded-2xl" disabled>
+                    {isThai ? "ยังจองไม่ได้" : "Unavailable"}
                   </Button>
-                </Link>
-              ) : null}
+                ) : (
+                  <Link href={`/reservations/new?parkingSpaceId=${space._id}`}>
+                    <Button className="w-full rounded-2xl">{isThai ? "จองช่องนี้" : "Reserve this spot"}</Button>
+                  </Link>
+                )}
+
+                {canScan ? (
+                  <Link href="/scan">
+                    <Button variant="ghost" className="w-full gap-2 rounded-2xl">
+                      <QrCode className="h-4 w-4" />
+                      {isThai ? "สแกนเข้าออก" : "Scan access"}
+                    </Button>
+                  </Link>
+                ) : null}
+              </div>
             </div>
           </Card>
         );
