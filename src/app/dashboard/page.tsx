@@ -28,7 +28,9 @@ export default async function DashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-sky-700">{text.dashboard.badge}</p>
-          <h1 className="mt-2 text-3xl font-semibold text-zinc-950">{text.dashboard.title}, {user.name}</h1>
+          <h1 className="mt-2 text-3xl font-semibold text-zinc-950">
+            {text.dashboard.title}, {user.name}
+          </h1>
         </div>
         <Link href="/parking">
           <Button>{text.dashboard.reserve}</Button>
@@ -49,6 +51,19 @@ export default async function DashboardPage() {
         <Card>
           <p className="text-sm text-zinc-500">{text.dashboard.lineLinked}</p>
           <p className="mt-2 text-4xl font-semibold text-zinc-950">{user.lineUserId ? text.dashboard.yes : text.dashboard.no}</p>
+          {!user.lineUserId ? (
+            <div className="mt-4">
+              <Link href="/line/connect">
+                <Button>เชื่อมต่อ LINE กับระบบ</Button>
+              </Link>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-zinc-500">
+              {locale === "th"
+                ? "ระบบพร้อมส่งแจ้งเตือนการจองเข้า LINE ของคุณ"
+                : "Reservation alerts are ready to be delivered to your LINE account."}
+            </p>
+          )}
         </Card>
       </div>
 

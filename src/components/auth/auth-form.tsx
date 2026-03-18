@@ -59,14 +59,13 @@ export function AuthForm({
     name?: string;
     email: string;
     password: string;
-    lineUserId?: string;
   };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues:
       mode === "register"
-        ? { name: "", email: "", password: "", lineUserId: "" }
+        ? { name: "", email: "", password: "" }
         : { email: "", password: "" },
   });
 
@@ -138,11 +137,6 @@ export function AuthForm({
             <label className="text-sm font-medium text-zinc-700">{text.auth.name}</label>
             <Input {...form.register("name" as const)} placeholder={text.auth.namePlaceholder} />
             <p className="text-xs text-rose-600">{String(form.formState.errors.name?.message ?? "")}</p>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700">{text.auth.lineUserId}</label>
-            <Input {...form.register("lineUserId")} placeholder={text.auth.lineUserIdPlaceholder} />
-            <p className="text-xs text-zinc-500">{text.auth.lineUserIdHint}</p>
           </div>
         </>
       )}

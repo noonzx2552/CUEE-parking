@@ -19,6 +19,7 @@ export const PATCH = withErrorHandler(async (request) => {
       $set: {
         name: payload.name,
         lineUserId: payload.lineUserId || null,
+        ...(payload.lineUserId ? {} : { lineBindToken: null, lineBindExpiresAt: null }),
       },
     },
     { new: true, projection: { passwordHash: 0 } },

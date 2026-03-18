@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,21 +42,9 @@ declare global {
 const parkingPins = [
   {
     zone: "A",
-    title: "อาคารเรียนหลัก",
-    detail: "เหมาะกับการจอดระยะสั้นและ EV",
+    title: "à¸­à¸²à¸„à¸²à¸£à¹€à¸£à¸µà¸¢à¸™à¸«à¸¥à¸±à¸",
+    detail: "à¹€à¸«à¸¡à¸²à¸°à¸à¸±à¸šà¸à¸²à¸£à¸ˆà¸­à¸”à¸£à¸°à¸¢à¸°à¸ªà¸±à¹‰à¸™à¹à¸¥à¸° EV",
     accent: "bg-sky-600",
-  },
-  {
-    zone: "B",
-    title: "ลานจอดคณะ",
-    detail: "โซนทั่วไป เข้าออกสะดวก",
-    accent: "bg-emerald-600",
-  },
-  {
-    zone: "VIP",
-    title: "ด้านหน้าอาคาร",
-    detail: "จุดรับส่งและสิทธิ์พิเศษ",
-    accent: "bg-amber-500",
   },
 ];
 
@@ -98,7 +86,7 @@ export function ScanAccessClient({
 
   const submitToken = useCallback(async (rawToken: string, currentMode: "entry" | "exit") => {
     if (!rawToken) {
-      toast.error("ไม่พบ token ของ QR");
+      toast.error("à¹„à¸¡à¹ˆà¸žà¸š token à¸‚à¸­à¸‡ QR");
       return;
     }
 
@@ -118,7 +106,7 @@ export function ScanAccessClient({
     setIsSubmitting(false);
 
     if (!response.ok) {
-      toast.error(data.message ?? "ไม่สามารถสแกน QR ได้");
+      toast.error(data.message ?? "à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¸ªà¹à¸à¸™ QR à¹„à¸”à¹‰");
       return;
     }
 
@@ -139,7 +127,7 @@ export function ScanAccessClient({
   useEffect(() => {
     if (view !== "camera" || initialToken || !window.BarcodeDetector || !navigator.mediaDevices?.getUserMedia) {
       if (view === "camera" && !window.BarcodeDetector) {
-        setScannerError("เบราว์เซอร์นี้ยังไม่รองรับการสแกนจากหน้าเว็บ สามารถวางลิงก์ QR หรือใช้กล้องมือถือปกติได้");
+        setScannerError("à¹€à¸šà¸£à¸²à¸§à¹Œà¹€à¸‹à¸­à¸£à¹Œà¸™à¸µà¹‰à¸¢à¸±à¸‡à¹„à¸¡à¹ˆà¸£à¸­à¸‡à¸£à¸±à¸šà¸à¸²à¸£à¸ªà¹à¸à¸™à¸ˆà¸²à¸à¸«à¸™à¹‰à¸²à¹€à¸§à¹‡à¸š à¸ªà¸²à¸¡à¸²à¸£à¸–à¸§à¸²à¸‡à¸¥à¸´à¸‡à¸à¹Œ QR à¸«à¸£à¸·à¸­à¹ƒà¸Šà¹‰à¸à¸¥à¹‰à¸­à¸‡à¸¡à¸·à¸­à¸–à¸·à¸­à¸›à¸à¸•à¸´à¹„à¸”à¹‰");
       }
       return;
     }
@@ -168,7 +156,7 @@ export function ScanAccessClient({
 
         const BarcodeDetectorApi = window.BarcodeDetector;
         if (!BarcodeDetectorApi) {
-          setScannerError("ไม่สามารถเริ่มตัวสแกน QR ได้");
+          setScannerError("à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¹€à¸£à¸´à¹ˆà¸¡à¸•à¸±à¸§à¸ªà¹à¸à¸™ QR à¹„à¸”à¹‰");
           return;
         }
 
@@ -200,7 +188,7 @@ export function ScanAccessClient({
           }
         }, 900);
       } catch {
-        setScannerError("ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตสิทธิ์กล้อง หรือใช้ลิงก์จากการสแกนด้วยกล้องมือถือ");
+        setScannerError("à¹„à¸¡à¹ˆà¸ªà¸²à¸¡à¸²à¸£à¸–à¹€à¸›à¸´à¸”à¸à¸¥à¹‰à¸­à¸‡à¹„à¸”à¹‰ à¸à¸£à¸¸à¸“à¸²à¸­à¸™à¸¸à¸à¸²à¸•à¸ªà¸´à¸—à¸˜à¸´à¹Œà¸à¸¥à¹‰à¸­à¸‡ à¸«à¸£à¸·à¸­à¹ƒà¸Šà¹‰à¸¥à¸´à¸‡à¸à¹Œà¸ˆà¸²à¸à¸à¸²à¸£à¸ªà¹à¸à¸™à¸”à¹‰à¸§à¸¢à¸à¸¥à¹‰à¸­à¸‡à¸¡à¸·à¸­à¸–à¸·à¸­");
       }
     }
 
@@ -240,14 +228,14 @@ export function ScanAccessClient({
                 className="inline-flex items-center gap-2 text-sm font-medium text-sky-100/90"
               >
                 <ArrowLeft className="h-4 w-4" />
-                กลับไปหน้าเลือกวิธีเข้าออก
+                à¸à¸¥à¸±à¸šà¹„à¸›à¸«à¸™à¹‰à¸²à¹€à¸¥à¸·à¸­à¸à¸§à¸´à¸˜à¸µà¹€à¸‚à¹‰à¸²à¸­à¸­à¸
               </button>
               <div>
                 <p className="text-xs uppercase tracking-[0.25em] text-sky-100/70">Live Camera</p>
-                <h1 className="mt-3 text-3xl font-semibold">เปิดกล้องเพื่อสแกน QR {mode === "entry" ? "เข้า" : "ออก"}</h1>
+                <h1 className="mt-3 text-3xl font-semibold">à¹€à¸›à¸´à¸”à¸à¸¥à¹‰à¸­à¸‡à¹€à¸žà¸·à¹ˆà¸­à¸ªà¹à¸à¸™ QR {mode === "entry" ? "à¹€à¸‚à¹‰à¸²" : "à¸­à¸­à¸"}</h1>
               </div>
               <p className="max-w-xl text-sm leading-7 text-sky-50/80">
-                หันกล้องไปที่ QR แล้วระบบจะพาเข้า flow ให้อัตโนมัติ ถ้ามาจากกล้องมือถือปกติอยู่แล้ว หน้าเว็บนี้จะรับงานต่อให้เลย
+                à¸«à¸±à¸™à¸à¸¥à¹‰à¸­à¸‡à¹„à¸›à¸—à¸µà¹ˆ QR à¹à¸¥à¹‰à¸§à¸£à¸°à¸šà¸šà¸ˆà¸°à¸žà¸²à¹€à¸‚à¹‰à¸² flow à¹ƒà¸«à¹‰à¸­à¸±à¸•à¹‚à¸™à¸¡à¸±à¸•à¸´ à¸–à¹‰à¸²à¸¡à¸²à¸ˆà¸²à¸à¸à¸¥à¹‰à¸­à¸‡à¸¡à¸·à¸­à¸–à¸·à¸­à¸›à¸à¸•à¸´à¸­à¸¢à¸¹à¹ˆà¹à¸¥à¹‰à¸§ à¸«à¸™à¹‰à¸²à¹€à¸§à¹‡à¸šà¸™à¸µà¹‰à¸ˆà¸°à¸£à¸±à¸šà¸‡à¸²à¸™à¸•à¹ˆà¸­à¹ƒà¸«à¹‰à¹€à¸¥à¸¢
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button
@@ -256,7 +244,7 @@ export function ScanAccessClient({
                   className={mode === "entry" ? "" : "border-white/20 bg-white/10 text-white hover:bg-white/15"}
                   onClick={() => openCameraView("entry")}
                 >
-                  โหมดเข้า
+                  à¹‚à¸«à¸¡à¸”à¹€à¸‚à¹‰à¸²
                 </Button>
                 <Button
                   type="button"
@@ -264,7 +252,7 @@ export function ScanAccessClient({
                   className={mode === "exit" ? "" : "border-white/20 bg-white/10 text-white hover:bg-white/15"}
                   onClick={() => openCameraView("exit")}
                 >
-                  โหมดออก
+                  à¹‚à¸«à¸¡à¸”à¸­à¸­à¸
                 </Button>
               </div>
             </div>
@@ -275,10 +263,10 @@ export function ScanAccessClient({
               </div>
               <div className="mt-4 space-y-2">
                 <p className="text-sm font-medium text-white">
-                  {scannerReady ? "กล้องพร้อมแล้ว สแกนได้ทันที" : "กำลังเตรียมกล้องหรือรอสิทธิ์จากเบราว์เซอร์"}
+                  {scannerReady ? "à¸à¸¥à¹‰à¸­à¸‡à¸žà¸£à¹‰à¸­à¸¡à¹à¸¥à¹‰à¸§ à¸ªà¹à¸à¸™à¹„à¸”à¹‰à¸—à¸±à¸™à¸—à¸µ" : "à¸à¸³à¸¥à¸±à¸‡à¹€à¸•à¸£à¸µà¸¢à¸¡à¸à¸¥à¹‰à¸­à¸‡à¸«à¸£à¸·à¸­à¸£à¸­à¸ªà¸´à¸—à¸˜à¸´à¹Œà¸ˆà¸²à¸à¹€à¸šà¸£à¸²à¸§à¹Œà¹€à¸‹à¸­à¸£à¹Œ"}
                 </p>
                 <p className="text-sm text-sky-100/70">
-                  ถ้าเบราว์เซอร์ไม่รองรับ ให้กลับไปใช้ลิงก์หรือ token ด้านล่างแทน
+                  à¸–à¹‰à¸²à¹€à¸šà¸£à¸²à¸§à¹Œà¹€à¸‹à¸­à¸£à¹Œà¹„à¸¡à¹ˆà¸£à¸­à¸‡à¸£à¸±à¸š à¹ƒà¸«à¹‰à¸à¸¥à¸±à¸šà¹„à¸›à¹ƒà¸Šà¹‰à¸¥à¸´à¸‡à¸à¹Œà¸«à¸£à¸·à¸­ token à¸”à¹‰à¸²à¸™à¸¥à¹ˆà¸²à¸‡à¹à¸—à¸™
                 </p>
                 {scannerError ? <p className="text-sm text-amber-300">{scannerError}</p> : null}
                 {resultMessage ? (
@@ -295,12 +283,12 @@ export function ScanAccessClient({
           <Card className="space-y-4">
             <div className="flex items-center gap-2">
               <KeyRound className="h-5 w-5 text-sky-700" />
-              <h2 className="text-lg font-semibold text-zinc-950">วางลิงก์หรือ token เอง</h2>
+              <h2 className="text-lg font-semibold text-zinc-950">à¸§à¸²à¸‡à¸¥à¸´à¸‡à¸à¹Œà¸«à¸£à¸·à¸­ token à¹€à¸­à¸‡</h2>
             </div>
             <Input
               value={tokenInput}
               onChange={(event) => setTokenInput(event.target.value)}
-              placeholder="วาง URL จาก QR หรือ token"
+              placeholder="à¸§à¸²à¸‡ URL à¸ˆà¸²à¸ QR à¸«à¸£à¸·à¸­ token"
             />
             <div className="flex flex-wrap gap-3">
               <Button
@@ -312,10 +300,10 @@ export function ScanAccessClient({
                 }}
                 type="button"
               >
-                {isSubmitting ? "กำลังดำเนินการ..." : mode === "entry" ? "เช็กอิน" : "เช็กเอาต์"}
+                {isSubmitting ? "à¸à¸³à¸¥à¸±à¸‡à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£..." : mode === "entry" ? "à¹€à¸Šà¹‡à¸à¸­à¸´à¸™" : "à¹€à¸Šà¹‡à¸à¹€à¸­à¸²à¸•à¹Œ"}
               </Button>
               <Link href="/reservations" className="inline-flex h-11 items-center rounded-xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700">
-                กลับไปหน้าการจอง
+                à¸à¸¥à¸±à¸šà¹„à¸›à¸«à¸™à¹‰à¸²à¸à¸²à¸£à¸ˆà¸­à¸‡
               </Link>
             </div>
           </Card>
@@ -323,7 +311,7 @@ export function ScanAccessClient({
           <Card className="space-y-4">
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-sky-700" />
-              <h2 className="text-lg font-semibold text-zinc-950">PIN บริเวณที่จอด</h2>
+              <h2 className="text-lg font-semibold text-zinc-950">PIN à¸šà¸£à¸´à¹€à¸§à¸“à¸—à¸µà¹ˆà¸ˆà¸­à¸”</h2>
             </div>
             <div className="grid gap-3">
               {parkingPins.map((pin) => (
@@ -354,10 +342,10 @@ export function ScanAccessClient({
             </div>
             <div className="space-y-3">
               <h1 className="max-w-xl text-4xl font-semibold tracking-tight text-zinc-950 md:text-5xl">
-                เลือกวิธีสแกนเข้าออกจากลานจอดก่อน
+                à¹€à¸¥à¸·à¸­à¸à¸§à¸´à¸˜à¸µà¸ªà¹à¸à¸™à¹€à¸‚à¹‰à¸²à¸­à¸­à¸à¸ˆà¸²à¸à¸¥à¸²à¸™à¸ˆà¸­à¸”à¸à¹ˆà¸­à¸™
               </h1>
               <p className="max-w-xl text-base leading-8 text-zinc-600">
-                กดเปิดกล้องเพื่อเข้าสู่หน้า scanner โดยตรง หรือใช้ลิงก์/QR จากมือถือ แล้วดูตำแหน่งโซนจอดรถจาก PIN ด้านล่างได้ทันที
+                à¸à¸”à¹€à¸›à¸´à¸”à¸à¸¥à¹‰à¸­à¸‡à¹€à¸žà¸·à¹ˆà¸­à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸«à¸™à¹‰à¸² scanner à¹‚à¸”à¸¢à¸•à¸£à¸‡ à¸«à¸£à¸·à¸­à¹ƒà¸Šà¹‰à¸¥à¸´à¸‡à¸à¹Œ/QR à¸ˆà¸²à¸à¸¡à¸·à¸­à¸–à¸·à¸­ à¹à¸¥à¹‰à¸§à¸”à¸¹à¸•à¸³à¹à¸«à¸™à¹ˆà¸‡à¹‚à¸‹à¸™à¸ˆà¸­à¸”à¸£à¸–à¸ˆà¸²à¸ PIN à¸”à¹‰à¸²à¸™à¸¥à¹ˆà¸²à¸‡à¹„à¸”à¹‰à¸—à¸±à¸™à¸—à¸µ
               </p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -372,9 +360,9 @@ export function ScanAccessClient({
                   </div>
                   <MoveRight className="h-5 w-5 text-zinc-400 transition group-hover:text-sky-700" />
                 </div>
-                <p className="mt-6 text-xl font-semibold text-zinc-950">เปิดกล้องสแกนเข้า</p>
+                <p className="mt-6 text-xl font-semibold text-zinc-950">à¹€à¸›à¸´à¸”à¸à¸¥à¹‰à¸­à¸‡à¸ªà¹à¸à¸™à¹€à¸‚à¹‰à¸²</p>
                 <p className="mt-2 text-sm leading-7 text-zinc-600">
-                  เข้าสู่หน้ากล้องแบบเต็มหน้าจอเพื่อเช็กอินจาก QR
+                  à¹€à¸‚à¹‰à¸²à¸ªà¸¹à¹ˆà¸«à¸™à¹‰à¸²à¸à¸¥à¹‰à¸­à¸‡à¹à¸šà¸šà¹€à¸•à¹‡à¸¡à¸«à¸™à¹‰à¸²à¸ˆà¸­à¹€à¸žà¸·à¹ˆà¸­à¹€à¸Šà¹‡à¸à¸­à¸´à¸™à¸ˆà¸²à¸ QR
                 </p>
               </button>
 
@@ -389,9 +377,9 @@ export function ScanAccessClient({
                   </div>
                   <MoveRight className="h-5 w-5 text-zinc-500 transition group-hover:text-white" />
                 </div>
-                <p className="mt-6 text-xl font-semibold">เปิดกล้องสแกนออก</p>
+                <p className="mt-6 text-xl font-semibold">à¹€à¸›à¸´à¸”à¸à¸¥à¹‰à¸­à¸‡à¸ªà¹à¸à¸™à¸­à¸­à¸</p>
                 <p className="mt-2 text-sm leading-7 text-zinc-300">
-                  ใช้ตอนรถออกจากช่องจอดและต้องการเช็กเอาต์ทันที
+                  à¹ƒà¸Šà¹‰à¸•à¸­à¸™à¸£à¸–à¸­à¸­à¸à¸ˆà¸²à¸à¸Šà¹ˆà¸­à¸‡à¸ˆà¸­à¸”à¹à¸¥à¸°à¸•à¹‰à¸­à¸‡à¸à¸²à¸£à¹€à¸Šà¹‡à¸à¹€à¸­à¸²à¸•à¹Œà¸—à¸±à¸™à¸—à¸µ
                 </p>
               </button>
             </div>
@@ -400,16 +388,16 @@ export function ScanAccessClient({
           <div className="rounded-[32px] border border-zinc-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2">
               <QrCode className="h-5 w-5 text-sky-700" />
-              <h2 className="text-lg font-semibold text-zinc-950">วางลิงก์หรือ token</h2>
+              <h2 className="text-lg font-semibold text-zinc-950">à¸§à¸²à¸‡à¸¥à¸´à¸‡à¸à¹Œà¸«à¸£à¸·à¸­ token</h2>
             </div>
             <p className="mt-2 text-sm leading-7 text-zinc-600">
-              ใช้ได้ทั้งลิงก์จาก QR, token ที่ระบบสร้าง, หรือกรณีเบราว์เซอร์ไม่รองรับกล้อง
+              à¹ƒà¸Šà¹‰à¹„à¸”à¹‰à¸—à¸±à¹‰à¸‡à¸¥à¸´à¸‡à¸à¹Œà¸ˆà¸²à¸ QR, token à¸—à¸µà¹ˆà¸£à¸°à¸šà¸šà¸ªà¸£à¹‰à¸²à¸‡, à¸«à¸£à¸·à¸­à¸à¸£à¸“à¸µà¹€à¸šà¸£à¸²à¸§à¹Œà¹€à¸‹à¸­à¸£à¹Œà¹„à¸¡à¹ˆà¸£à¸­à¸‡à¸£à¸±à¸šà¸à¸¥à¹‰à¸­à¸‡
             </p>
             <div className="mt-5 space-y-4">
               <Input
                 value={tokenInput}
                 onChange={(event) => setTokenInput(event.target.value)}
-                placeholder="วาง URL จาก QR หรือ token"
+                placeholder="à¸§à¸²à¸‡ URL à¸ˆà¸²à¸ QR à¸«à¸£à¸·à¸­ token"
               />
               <div className="flex flex-wrap gap-3">
                 <Button
@@ -421,10 +409,10 @@ export function ScanAccessClient({
                   }}
                   type="button"
                 >
-                  {isSubmitting ? "กำลังดำเนินการ..." : "ส่งข้อมูล"}
+                  {isSubmitting ? "à¸à¸³à¸¥à¸±à¸‡à¸”à¸³à¹€à¸™à¸´à¸™à¸à¸²à¸£..." : "à¸ªà¹ˆà¸‡à¸‚à¹‰à¸­à¸¡à¸¹à¸¥"}
                 </Button>
                 <Link href="/reservations" className="inline-flex h-11 items-center rounded-xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700">
-                  กลับไปหน้าการจอง
+                  à¸à¸¥à¸±à¸šà¹„à¸›à¸«à¸™à¹‰à¸²à¸à¸²à¸£à¸ˆà¸­à¸‡
                 </Link>
               </div>
               {resultMessage ? (
@@ -441,7 +429,7 @@ export function ScanAccessClient({
         <Card className="space-y-5">
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-sky-700" />
-            <h2 className="text-lg font-semibold text-zinc-950">PIN บริเวณหน้าที่จอด</h2>
+            <h2 className="text-lg font-semibold text-zinc-950">PIN à¸šà¸£à¸´à¹€à¸§à¸“à¸«à¸™à¹‰à¸²à¸—à¸µà¹ˆà¸ˆà¸­à¸”</h2>
           </div>
           <div className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-[linear-gradient(180deg,#eff6ff,#f8fafc)] p-6">
             <div className="absolute inset-x-10 top-8 h-20 rounded-full border border-dashed border-sky-200/70" />
@@ -464,7 +452,7 @@ export function ScanAccessClient({
                     </div>
                   </div>
                   <div className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-sky-700">
-                    ดูช่องในโซนนี้
+                    à¸”à¸¹à¸Šà¹ˆà¸­à¸‡à¹ƒà¸™à¹‚à¸‹à¸™à¸™à¸µà¹‰
                     <MoveRight className="h-4 w-4" />
                   </div>
                 </button>
@@ -476,14 +464,14 @@ export function ScanAccessClient({
         <Card className="space-y-5">
           <div className="flex items-center gap-2">
             <ScanLine className="h-5 w-5 text-sky-700" />
-            <h2 className="text-lg font-semibold text-zinc-950">ลำดับการใช้งาน</h2>
+            <h2 className="text-lg font-semibold text-zinc-950">à¸¥à¸³à¸”à¸±à¸šà¸à¸²à¸£à¹ƒà¸Šà¹‰à¸‡à¸²à¸™</h2>
           </div>
           <div className="space-y-3">
             {[
-              "1. เลือกว่าจะสแกนเข้า หรือสแกนออก",
-              "2. กดเปิดกล้องเพื่อไปหน้า scanner โดยตรง",
-              "3. ถ้าใช้กล้องมือถือปกติ ระบบจะเด้งเข้าหน้านี้แล้วทำรายการต่อ",
-              "4. ถ้าเปิดกล้องไม่ได้ ให้วางลิงก์หรือ token แทน",
+              "1. à¹€à¸¥à¸·à¸­à¸à¸§à¹ˆà¸²à¸ˆà¸°à¸ªà¹à¸à¸™à¹€à¸‚à¹‰à¸² à¸«à¸£à¸·à¸­à¸ªà¹à¸à¸™à¸­à¸­à¸",
+              "2. à¸à¸”à¹€à¸›à¸´à¸”à¸à¸¥à¹‰à¸­à¸‡à¹€à¸žà¸·à¹ˆà¸­à¹„à¸›à¸«à¸™à¹‰à¸² scanner à¹‚à¸”à¸¢à¸•à¸£à¸‡",
+              "3. à¸–à¹‰à¸²à¹ƒà¸Šà¹‰à¸à¸¥à¹‰à¸­à¸‡à¸¡à¸·à¸­à¸–à¸·à¸­à¸›à¸à¸•à¸´ à¸£à¸°à¸šà¸šà¸ˆà¸°à¹€à¸”à¹‰à¸‡à¹€à¸‚à¹‰à¸²à¸«à¸™à¹‰à¸²à¸™à¸µà¹‰à¹à¸¥à¹‰à¸§à¸—à¸³à¸£à¸²à¸¢à¸à¸²à¸£à¸•à¹ˆà¸­",
+              "4. à¸–à¹‰à¸²à¹€à¸›à¸´à¸”à¸à¸¥à¹‰à¸­à¸‡à¹„à¸¡à¹ˆà¹„à¸”à¹‰ à¹ƒà¸«à¹‰à¸§à¸²à¸‡à¸¥à¸´à¸‡à¸à¹Œà¸«à¸£à¸·à¸­ token à¹à¸—à¸™",
             ].map((item, index) => (
               <div key={item} className="flex gap-4 rounded-2xl border border-zinc-200 p-4">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sm font-semibold text-sky-700">
@@ -498,3 +486,4 @@ export function ScanAccessClient({
     </div>
   );
 }
+

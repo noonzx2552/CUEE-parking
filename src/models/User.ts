@@ -8,6 +8,8 @@ const userSchema = new Schema(
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ["user", "admin"], default: "user", index: true },
     lineUserId: { type: String, default: null },
+    lineBindToken: { type: String, default: null, index: true },
+    lineBindExpiresAt: { type: Date, default: null, index: true },
     isActive: { type: Boolean, default: true, index: true },
   },
   { timestamps: true },

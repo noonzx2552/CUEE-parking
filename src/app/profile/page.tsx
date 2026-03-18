@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
-import { env } from "@/lib/env";
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
@@ -21,7 +20,7 @@ export default async function ProfilePage() {
             name: user.name,
             lineUserId: user.lineUserId ?? "",
           }}
-          lineAddFriendUrl={env.LINE_ADD_FRIEND_URL}
+          hasLineConnection={Boolean(user.lineUserId)}
         />
       </Card>
     </div>

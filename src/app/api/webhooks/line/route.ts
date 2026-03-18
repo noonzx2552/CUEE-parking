@@ -34,12 +34,49 @@ export const POST = withErrorHandler(async (request) => {
 
   for (const event of body.events ?? []) {
     if (event.type !== "message") continue;
-    const message = event.message?.text?.trim() ?? "";
-    if (!message.toLowerCase().startsWith("bind ")) continue;
-    const email = message.slice(5).trim().toLowerCase();
-    if (!email || !event.source?.userId) continue;
 
-    await UserModel.findOneAndUpdate({ email }, { $set: { lineUserId: event.source.userId } });
+    const message = event.message?.text?.trim() ?? "";
+    const normalized = message.toLowerCase();
+    const sourceUserId = event.source?.userId;
+
+    if (!sourceUserId || !normalized.startsWith("bind ")) {
+      continue;
+    }
+
+    const bindValue = message.slice(5).trim();
+    if (!bindValue) continue;
+
+    const now = new Date();
+
+    const tokenBoundUser = await UserModel.findOneAndUpdate(
+      {
+        lineBindToken: bindValue,
+        lineBindExpiresAt: { $gt: now },
+      },
+      {
+        $set: {
+          lineUserId: sourceUserId,
+        },
+        $unset: {
+          lineBindToken: 1,
+          lineBindExpiresAt: 1,
+        },
+      },
+      { new: true },
+    );
+
+    if (tokenBoundUser) {
+      continue;
+    }
+
+    const email = bindValue.toLowerCase();
+    await UserModel.findOneAndUpdate(
+      { email },
+      {
+        $set: { lineUserId: sourceUserId },
+        $unset: { lineBindToken: 1, lineBindExpiresAt: 1 },
+      },
+    );
   }
 
   return jsonOk({ ok: true });

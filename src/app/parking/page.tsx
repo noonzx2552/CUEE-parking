@@ -44,44 +44,63 @@ export default async function ParkingPage({
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-      <div className="space-y-3">
-        <p className="text-sm uppercase tracking-[0.2em] text-sky-700">
-          {isThai ? "สถานะที่จอดรถ" : "Parking availability"}
-        </p>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-zinc-950">
-              {isThai ? "เลือกช่องจอดรถ" : "Choose a parking space"}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
-              {isThai
-                ? "ตอนนี้ระบบเริ่มต้นด้วยที่จอด 4 ช่อง เลือกช่องที่ต้องการแล้วกดจองได้ทันที"
-                : "The system currently starts with 4 spaces. Pick the one you want and reserve it directly."}
+      <Card className="overflow-hidden rounded-[2rem] border-sky-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl space-y-3">
+            <p className="text-sm uppercase tracking-[0.2em] text-sky-700">
+              {isThai ? "สถานะที่จอดรถ" : "Parking availability"}
+            </p>
+            <div>
+              <h1 className="text-3xl font-semibold text-zinc-950">
+                {isThai ? "เลือกช่องจอดรถ" : "Choose a parking space"}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+                {isThai
+                  ? "ตอนนี้ระบบเริ่มต้นด้วยที่จอด 4 ช่อง เลือกช่องที่ต้องการแล้วกดจองได้ทันที"
+                  : "The system currently starts with 4 spaces. Pick the one you want and reserve it directly."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <span className="rounded-full bg-white px-4 py-2 font-medium text-zinc-700 shadow-sm">
+                {isThai ? "จำนวนที่จอด 4 ช่อง" : "4 total spaces"}
+              </span>
+              <span className="rounded-full bg-emerald-100 px-4 py-2 font-medium text-emerald-800">
+                {isThai ? `ว่าง ${availableSpaces} ช่อง` : `${availableSpaces} available`}
+              </span>
+              <span className="rounded-full bg-sky-100 px-4 py-2 font-medium text-sky-800">
+                {isThai ? `ใช้งานอยู่ ${activeSpaces} ช่อง` : `${activeSpaces} in use`}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-stretch gap-3 sm:min-w-64">
+            <Link
+              href="/reservations/new"
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-sky-600 px-5 text-sm font-semibold !text-white shadow-sm transition hover:bg-sky-700 hover:!text-white visited:!text-white"
+            >
+              {isThai ? "เปิดหน้าจอง" : "Open booking"}
+            </Link>
+            <p className="text-xs leading-5 text-zinc-500">
+              {isThai ? "เข้าไปดูเวลาและค่าจอด ก่อนยืนยันการจอง" : "Review time and parking fee details before confirming."}
             </p>
           </div>
-          <Link
-            href="/reservations/new"
-            className="inline-flex h-11 items-center rounded-2xl bg-zinc-950 px-4 text-sm font-medium text-white"
-          >
-            {isThai ? "เปิดหน้าจอง" : "Open booking"}
-          </Link>
         </div>
-      </div>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="rounded-3xl">
+        <Card className="rounded-3xl border-zinc-100 bg-white/95">
           <p className="text-sm text-zinc-500">{isThai ? "ทั้งหมด" : "Total"}</p>
           <p className="mt-2 text-3xl font-semibold text-zinc-950">{totalSpaces}</p>
         </Card>
-        <Card className="rounded-3xl">
+        <Card className="rounded-3xl border-emerald-100 bg-emerald-50/60">
           <p className="text-sm text-zinc-500">{isThai ? "ว่าง" : "Available"}</p>
           <p className="mt-2 text-3xl font-semibold text-emerald-700">{availableSpaces}</p>
         </Card>
-        <Card className="rounded-3xl">
+        <Card className="rounded-3xl border-sky-100 bg-sky-50/60">
           <p className="text-sm text-zinc-500">{isThai ? "กำลังใช้งาน" : "In use"}</p>
           <p className="mt-2 text-3xl font-semibold text-sky-700">{activeSpaces}</p>
         </Card>
-        <Card className="rounded-3xl">
+        <Card className="rounded-3xl border-rose-100 bg-rose-50/60">
           <p className="text-sm text-zinc-500">{isThai ? "ปิดปรับปรุง" : "Maintenance"}</p>
           <p className="mt-2 text-3xl font-semibold text-rose-700">{maintenanceSpaces}</p>
         </Card>
@@ -124,7 +143,7 @@ export default async function ParkingPage({
             </Select>
           </div>
           <div className="flex items-end">
-            <button className="h-11 rounded-2xl bg-sky-600 px-4 text-sm font-medium text-white" type="submit">
+            <button className="h-11 rounded-2xl bg-sky-600 px-4 text-sm font-medium text-white transition hover:bg-sky-700" type="submit">
               {isThai ? "ค้นหา" : "Filter"}
             </button>
           </div>
@@ -153,7 +172,7 @@ export default async function ParkingPage({
           {scannableSpaceIds.length ? (
             <Link
               href="/scan"
-              className="inline-flex h-11 items-center rounded-2xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700"
+              className="inline-flex h-11 items-center rounded-2xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
             >
               {isThai ? "เปิดหน้าสแกน" : "Open scanner"}
             </Link>
@@ -163,5 +182,3 @@ export default async function ParkingPage({
     </div>
   );
 }
-
-

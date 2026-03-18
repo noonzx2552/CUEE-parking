@@ -8,6 +8,7 @@ const envSchema = z.object({
   LINE_CHANNEL_ACCESS_TOKEN: z.string().optional().default(""),
   LINE_CHANNEL_ID: z.string().optional().default(""),
   LINE_CHANNEL_SECRET: z.string().optional().default(""),
+  LINE_OA_ID: z.string().optional().default(""),
   LINE_ADD_FRIEND_URL: z.string().url().optional().or(z.literal("")).default(""),
   DISCORD_WEBHOOK_URL: z.string().url().optional().or(z.literal("")).default(""),
   APP_NAME: z.string().default("CUEE Parking"),

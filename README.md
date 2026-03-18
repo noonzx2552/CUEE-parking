@@ -26,6 +26,7 @@ SESSION_SECRET=change-this-secret-to-at-least-32-characters
 LINE_CHANNEL_ACCESS_TOKEN=
 LINE_CHANNEL_ID=
 LINE_CHANNEL_SECRET=
+LINE_OA_ID=
 LINE_ADD_FRIEND_URL=
 DISCORD_WEBHOOK_URL=
 APP_NAME=CUEE Parking
@@ -40,6 +41,7 @@ Notes:
 - `SESSION_SECRET` must be at least 32 characters.
 - `LINE_CHANNEL_ACCESS_TOKEN` is used for push messages.
 - `LINE_CHANNEL_ID` and `LINE_CHANNEL_SECRET` are reserved for webhook/login integration.
+- `LINE_OA_ID` is used to open the LINE OA chat with a prefilled connect message.
 - `LINE_ADD_FRIEND_URL` is an optional add-friend link for the LINE OA/bot.
 - `DISCORD_WEBHOOK_URL` is optional. If missing, Discord events are skipped gracefully.
 - Parking fees are configurable per hour through the `PARKING_FEE_*` variables.
@@ -174,18 +176,15 @@ Key pieces:
 
 ## LINE binding flow
 
-Current implementation supports two paths:
+Current implementation uses a dedicated `/line/connect` page.
 
-1. Manual binding in `/profile` by entering a LINE user ID.
-2. Webhook-assisted binding via `POST /api/webhooks/line`.
-
-Webhook flow assumption:
-
-- The LINE bot receives a message like `bind user@cuee.local`.
-- The handler verifies `x-line-signature` using `LINE_CHANNEL_SECRET`.
+- The app generates a short-lived bind token via `POST /api/profile/line-connect`.
+- If `LINE_OA_ID` is configured, the user can open the LINE OA chat directly with a prefilled connect message.
+- The LINE bot receives a message like `bind ABCD1234`.
+- The webhook verifies `x-line-signature` using `LINE_CHANNEL_SECRET`.
 - On success, the matching user account is updated with the sender's `lineUserId`.
 
-This is enough to integrate a real LINE bot, but production teams may want to add richer identity verification or a formal LINE Login flow.
+This keeps the dashboard/profile UI simple while still binding the real LINE account behind the scenes.
 
 ## Discord webhook
 
