@@ -26,8 +26,13 @@ SESSION_SECRET=change-this-secret-to-at-least-32-characters
 LINE_CHANNEL_ACCESS_TOKEN=
 LINE_CHANNEL_ID=
 LINE_CHANNEL_SECRET=
+LINE_ADD_FRIEND_URL=
 DISCORD_WEBHOOK_URL=
 APP_NAME=CUEE Parking
+PARKING_FEE_NORMAL_PER_HOUR=20
+PARKING_FEE_EV_PER_HOUR=30
+PARKING_FEE_DISABLED_PER_HOUR=0
+PARKING_FEE_CURRENCY=THB
 ```
 
 Notes:
@@ -35,7 +40,9 @@ Notes:
 - `SESSION_SECRET` must be at least 32 characters.
 - `LINE_CHANNEL_ACCESS_TOKEN` is used for push messages.
 - `LINE_CHANNEL_ID` and `LINE_CHANNEL_SECRET` are reserved for webhook/login integration.
+- `LINE_ADD_FRIEND_URL` is an optional add-friend link for the LINE OA/bot.
 - `DISCORD_WEBHOOK_URL` is optional. If missing, Discord events are skipped gracefully.
+- Parking fees are configurable per hour through the `PARKING_FEE_*` variables.
 
 ## Install and run
 
@@ -65,7 +72,7 @@ Seed contents:
 
 - 1 admin user
 - 1 demo user
-- 20 parking spaces across `A`, `B`, and `VIP`
+- 4 parking spaces across `A`, `B`, and `VIP`
 - 1 demo reservation
 
 ## Main routes

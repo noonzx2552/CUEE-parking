@@ -14,14 +14,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { calculateParkingFee, formatParkingFee, type ParkingFeeConfig } from "@/lib/parking-fees";
 import { cn } from "@/lib/utils";
 import { getCsrfToken } from "@/lib/web/csrf";
 import { reservationCreateSchema } from "@/lib/validators/reservation";
+import type { ParkingType } from "@/types";
 
 type SpaceOption = {
   _id: string;
   code: string;
   zone: string;
+  type: ParkingType;
   status: "available" | "reserved" | "occupied" | "maintenance";
 };
 
@@ -65,10 +68,12 @@ export function ReservationForm({
   parkingSpaceId,
   spaces,
   disabled,
+  feeConfig,
 }: {
   parkingSpaceId?: string;
   spaces: SpaceOption[];
   disabled: boolean;
+  feeConfig: ParkingFeeConfig;
 }) {
   const router = useRouter();
   const [spotSearch, setSpotSearch] = useState("");
@@ -86,6 +91,7 @@ export function ReservationForm({
   const bookingDate = useWatch({ control: form.control, name: "bookingDate" }) ?? format(new Date(), "yyyy-MM-dd");
   const startClock = useWatch({ control: form.control, name: "startClock" }) ?? "08:00";
   const endClock = useWatch({ control: form.control, name: "endClock" }) ?? "09:00";
+  const selectedSpaceId = useWatch({ control: form.control, name: "parkingSpaceId" }) ?? parkingSpaceId ?? "";
   const deferredSpotSearch = useDeferredValue(spotSearch);
   const dateOptions = useMemo(() => getDateOptions(), []);
   const visibleSpaces = useMemo(() => {
@@ -101,7 +107,16 @@ export function ReservationForm({
     dateOptions.find((item) => item.value === bookingDate)?.longLabel ??
     format(parseISO(bookingDate), "d MMMM yyyy", { locale: th });
 
+  const selectedSpace = spaces.find((space) => space._id === selectedSpaceId);
   const endTimeOptions = timeSlots.filter((slot) => slot > startClock);
+  const feePreview = selectedSpace
+    ? calculateParkingFee({
+        type: selectedSpace.type,
+        startTime: new Date(`${bookingDate}T${startClock}`),
+        endTime: new Date(`${bookingDate}T${endClock}`),
+        config: feeConfig,
+      })
+    : null;
 
   return (
     <form
@@ -253,7 +268,7 @@ export function ReservationForm({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div className="mt-6 grid gap-4 lg:grid-cols-4">
           <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-sky-700">วันจอด</p>
             <p className="mt-2 text-lg font-semibold text-zinc-950">{selectedDateLabel}</p>
@@ -266,7 +281,23 @@ export function ReservationForm({
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">สิ้นสุด</p>
             <p className="mt-2 text-lg font-semibold text-zinc-950">{displayTime(endClock)}</p>
           </div>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-emerald-700">ค่าจอด</p>
+            <p className="mt-2 text-lg font-semibold text-zinc-950">
+              {feePreview ? formatParkingFee(feePreview.total, feePreview.currency) : "-"}
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              {feePreview ? `${feePreview.ratePerHour} / ชั่วโมง` : "เลือกช่องก่อนเพื่อคำนวณ"}
+            </p>
+          </div>
         </div>
+
+        {feePreview ? (
+          <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm leading-7 text-emerald-900">
+            ค่าจอดคำนวณจากประเภท {selectedSpace?.type ?? "-"} ระยะเวลา {feePreview.durationHours.toFixed(2)} ชั่วโมง
+            รวม {formatParkingFee(feePreview.total, feePreview.currency)}
+          </div>
+        ) : null}
 
         <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
           เช็กอินได้ก่อนเวลาเริ่ม 30 นาที และถ้ายังไม่เช็กอิน ระบบจะถือสิทธิ์จองต่อให้อีก 10 นาที
@@ -284,7 +315,7 @@ export function ReservationForm({
           <div>
             <p className="font-medium text-zinc-900">ตรวจสอบอีกครั้งก่อนยืนยัน</p>
             <p className="mt-1 text-sm text-zinc-500">
-              ระบบจะจองตามช่อง วันที่ และเวลาที่แสดงด้านบน
+              ระบบจะจองตามช่อง วันที่ เวลา และค่าจอดที่แสดงด้านบน
             </p>
           </div>
         </div>

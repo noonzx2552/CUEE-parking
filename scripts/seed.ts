@@ -1,3 +1,4 @@
+import { addMinutes } from "date-fns";
 import bcrypt from "bcryptjs";
 
 import { connectToDatabase } from "@/lib/db/mongoose";
@@ -50,38 +51,44 @@ async function seed() {
   ]);
 
   const spaces = [
-    ...Array.from({ length: 8 }, (_, index) => ({
+    ...Array.from({ length: 2 }, (_, index) => ({
       code: `A${String(index + 1).padStart(2, "0")}`,
       zone: "A",
-      type: index < 2 ? "ev" : "normal",
+      type: index === 0 ? "ev" : "normal",
       status: "available",
       description: "Main building parking",
     })),
-    ...Array.from({ length: 8 }, (_, index) => ({
+    ...Array.from({ length: 1 }, (_, index) => ({
       code: `B${String(index + 1).padStart(2, "0")}`,
       zone: "B",
-      type: index === 0 ? "disabled" : "normal",
+      type: "disabled",
       status: "available",
       description: "Faculty parking area",
     })),
-    ...Array.from({ length: 4 }, (_, index) => ({
+    ...Array.from({ length: 1 }, (_, index) => ({
       code: `VIP${String(index + 1).padStart(2, "0")}`,
       zone: "VIP",
       type: "normal",
-      status: index === 0 ? "maintenance" : "available",
+      status: "maintenance",
       description: "Reserved for special access",
     })),
   ];
 
   const parkingSpaces = await ParkingSpaceModel.create(spaces);
+  const startTime = new Date(Date.now() + 60 * 60 * 1000);
+  const endTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
 
   await ReservationModel.create({
     userId: demoUser._id,
     parkingSpaceId: parkingSpaces[0]._id,
-    startTime: new Date(Date.now() + 60 * 60 * 1000),
-    endTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
+    startTime,
+    endTime,
+    parkingFee: 30,
+    feeRatePerHour: 30,
+    feeCurrency: "THB",
     status: "confirmed",
     note: "Seeded demo reservation",
+    checkInDeadline: addMinutes(startTime, 10),
   });
 
   console.log("Seed completed");

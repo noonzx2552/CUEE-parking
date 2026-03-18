@@ -8,8 +8,13 @@ const envSchema = z.object({
   LINE_CHANNEL_ACCESS_TOKEN: z.string().optional().default(""),
   LINE_CHANNEL_ID: z.string().optional().default(""),
   LINE_CHANNEL_SECRET: z.string().optional().default(""),
+  LINE_ADD_FRIEND_URL: z.string().url().optional().or(z.literal("")).default(""),
   DISCORD_WEBHOOK_URL: z.string().url().optional().or(z.literal("")).default(""),
   APP_NAME: z.string().default("CUEE Parking"),
+  PARKING_FEE_NORMAL_PER_HOUR: z.coerce.number().nonnegative().default(20),
+  PARKING_FEE_EV_PER_HOUR: z.coerce.number().nonnegative().default(30),
+  PARKING_FEE_DISABLED_PER_HOUR: z.coerce.number().nonnegative().default(0),
+  PARKING_FEE_CURRENCY: z.string().default("THB"),
 });
 
 const parsed = envSchema.safeParse(process.env);

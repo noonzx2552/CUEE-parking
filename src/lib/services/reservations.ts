@@ -13,7 +13,9 @@ import {
   UPCOMING_REMINDER_MINUTES,
 } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db/mongoose";
+import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
+import { calculateParkingFee, formatParkingFee } from "@/lib/parking-fees";
 import { createAuditLog } from "@/lib/services/audit-log";
 import { sendDiscordEvent } from "@/lib/services/discord";
 import { pushLineMessage } from "@/lib/services/line";
@@ -23,6 +25,12 @@ import { ReservationModel } from "@/models/Reservation";
 import { UserModel } from "@/models/User";
 
 const activeReservationStatuses = ["pending", "confirmed", "checked-in"];
+const parkingFeeConfig = {
+  normalPerHour: env.PARKING_FEE_NORMAL_PER_HOUR,
+  evPerHour: env.PARKING_FEE_EV_PER_HOUR,
+  disabledPerHour: env.PARKING_FEE_DISABLED_PER_HOUR,
+  currency: env.PARKING_FEE_CURRENCY,
+};
 
 async function syncParkingSpaceStatus(parkingSpaceId: string) {
   const now = new Date();
@@ -112,11 +120,21 @@ export async function createReservation(input: {
       throw new AppError("Selected time conflicts with an existing reservation", 409);
     }
 
+    const feeSummary = calculateParkingFee({
+      type: parkingSpace.type,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      config: parkingFeeConfig,
+    });
+
     const reservation = await ReservationModel.create({
       userId: new mongoose.Types.ObjectId(input.userId),
       parkingSpaceId: new mongoose.Types.ObjectId(input.parkingSpaceId),
       startTime: input.startTime,
       endTime: input.endTime,
+      parkingFee: feeSummary.total,
+      feeRatePerHour: feeSummary.ratePerHour,
+      feeCurrency: feeSummary.currency,
       checkInDeadline: addMinutes(input.startTime, CHECK_IN_GRACE_MINUTES),
       note: input.note ?? "",
       status: "confirmed",
@@ -136,6 +154,8 @@ export async function createReservation(input: {
         parkingCode: parkingSpace.code,
         startTime: input.startTime.toISOString(),
         endTime: input.endTime.toISOString(),
+        parkingFee: feeSummary.total,
+        feeCurrency: feeSummary.currency,
       },
       ...requestContext,
     });
@@ -144,6 +164,7 @@ export async function createReservation(input: {
       const lineResult = await pushLineMessage(user.lineUserId, [
         `Reservation confirmed / ยืนยันการจอง: ${parkingSpace.code}`,
         `Time: ${input.startTime.toLocaleString()} - ${input.endTime.toLocaleString()}`,
+        `Parking fee / ค่าจอดรถ: ${formatParkingFee(feeSummary.total, feeSummary.currency)}`,
         `Reminder in ${UPCOMING_REMINDER_MINUTES} minutes / ระบบจะเตือนก่อนเวลา`,
       ]);
 
@@ -228,9 +249,11 @@ export async function cancelReservation(input: {
   const parkingSpace = reservation.parkingSpaceId as unknown as { code: string };
   const lineResult = await pushLineMessage(user.lineUserId, [
     `Reservation cancelled / ยกเลิกการจอง: ${parkingSpace.code}`,
-    `Time: ${new Date(reservation.startTime).toLocaleString()} - ${new Date(
-      reservation.endTime,
-    ).toLocaleString()}`,
+    `Time: ${new Date(reservation.startTime).toLocaleString()} - ${new Date(reservation.endTime).toLocaleString()}`,
+    `Parking fee / ค่าจอดรถ: ${formatParkingFee(
+      Number((reservation as unknown as { parkingFee?: number }).parkingFee ?? 0),
+      String((reservation as unknown as { feeCurrency?: string }).feeCurrency ?? parkingFeeConfig.currency),
+    )}`,
   ]);
 
   await createAuditLog({

@@ -6,6 +6,9 @@ const reservationSchema = new Schema(
     parkingSpaceId: { type: Schema.Types.ObjectId, ref: "ParkingSpace", required: true, index: true },
     startTime: { type: Date, required: true, index: true },
     endTime: { type: Date, required: true, index: true },
+    parkingFee: { type: Number, min: 0, default: 0 },
+    feeRatePerHour: { type: Number, min: 0, default: 0 },
+    feeCurrency: { type: String, default: "THB" },
     status: {
       type: String,
       required: true,

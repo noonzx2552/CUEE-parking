@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getUserReservations } from "@/lib/data";
+import { formatParkingFee } from "@/lib/parking-fees";
 import { formatDateTime, reservationStatusColor, toTitleCase } from "@/lib/utils";
 
 export default async function ReservationsPage() {
@@ -27,6 +28,7 @@ export default async function ReservationsPage() {
               <tr>
                 <th className="py-3 pr-4">Parking</th>
                 <th className="py-3 pr-4">Time</th>
+                <th className="py-3 pr-4">Fee</th>
                 <th className="py-3 pr-4">Status</th>
                 <th className="py-3 pr-4">Action</th>
               </tr>
@@ -42,6 +44,12 @@ export default async function ReservationsPage() {
                     <p className="mt-1 text-xs text-zinc-500">
                       เช็กอินได้ถึง {formatDateTime(reservation.checkInDeadline ?? reservation.startTime)}
                     </p>
+                  </td>
+                  <td className="py-4 pr-4 text-zinc-700">
+                    {formatParkingFee(
+                      Number((reservation as { parkingFee?: number }).parkingFee ?? 0),
+                      String((reservation as { feeCurrency?: string }).feeCurrency ?? "THB"),
+                    )}
                   </td>
                   <td className="py-4 pr-4">
                     <Badge className={reservationStatusColor(reservation.status)}>{toTitleCase(reservation.status)}</Badge>

@@ -68,7 +68,7 @@ export default async function Home() {
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div className="rounded-2xl bg-white/10 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-sky-100/70">{text.home.availability}</p>
-                  <p className="mt-2 text-3xl font-semibold">20+</p>
+                  <p className="mt-2 text-3xl font-semibold">4</p>
                 </div>
                 <div className="rounded-2xl bg-white/10 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-sky-100/70">{text.home.zones}</p>

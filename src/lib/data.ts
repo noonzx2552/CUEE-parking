@@ -11,25 +11,25 @@ let defaultParkingBootstrapPromise: Promise<void> | null = null;
 
 function getDefaultParkingSpaces() {
   return [
-    ...Array.from({ length: 8 }, (_, index) => ({
+    ...Array.from({ length: 2 }, (_, index) => ({
       code: `A${String(index + 1).padStart(2, "0")}`,
       zone: "A",
-      type: index < 2 ? "ev" : "normal",
+      type: index === 0 ? "ev" : "normal",
       status: "available",
       description: "Main building parking",
     })),
-    ...Array.from({ length: 8 }, (_, index) => ({
+    ...Array.from({ length: 1 }, (_, index) => ({
       code: `B${String(index + 1).padStart(2, "0")}`,
       zone: "B",
-      type: index === 0 ? "disabled" : "normal",
+      type: "disabled",
       status: "available",
       description: "Faculty parking area",
     })),
-    ...Array.from({ length: 4 }, (_, index) => ({
+    ...Array.from({ length: 1 }, (_, index) => ({
       code: `VIP${String(index + 1).padStart(2, "0")}`,
       zone: "VIP",
       type: "normal",
-      status: index === 0 ? "maintenance" : "available",
+      status: "maintenance",
       description: "Reserved for special access",
     })),
   ];

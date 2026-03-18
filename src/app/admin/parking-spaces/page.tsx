@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { ParkingForm } from "@/components/admin/parking-form";
+import { ParkingSpaceActions } from "@/components/admin/parking-space-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -35,6 +36,7 @@ export default async function AdminParkingSpacesPage() {
               <th className="py-3 pr-4">Type</th>
               <th className="py-3 pr-4">Status</th>
               <th className="py-3 pr-4">Description</th>
+              <th className="py-3 pr-4">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -47,6 +49,9 @@ export default async function AdminParkingSpacesPage() {
                   <Badge className={parkingStatusColor(space.status)}>{toTitleCase(space.status)}</Badge>
                 </td>
                 <td className="py-4 pr-4 text-zinc-600">{space.description}</td>
+                <td className="py-4 pr-4">
+                  <ParkingSpaceActions parkingSpaceId={String(space._id)} parkingCode={space.code} />
+                </td>
               </tr>
             ))}
           </tbody>

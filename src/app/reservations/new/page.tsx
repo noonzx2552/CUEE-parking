@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getParkingSpaceById, getParkingSpaces } from "@/lib/data";
+import { env } from "@/lib/env";
 import { parkingStatusColor, serializeObject, toTitleCase } from "@/lib/utils";
 
 export default async function NewReservationPage({
@@ -22,6 +23,12 @@ export default async function NewReservationPage({
     parkingSpaceId ? getParkingSpaceById(parkingSpaceId) : Promise.resolve(null),
     getParkingSpaces({}),
   ]);
+  const feeConfig = {
+    normalPerHour: env.PARKING_FEE_NORMAL_PER_HOUR,
+    evPerHour: env.PARKING_FEE_EV_PER_HOUR,
+    disabledPerHour: env.PARKING_FEE_DISABLED_PER_HOUR,
+    currency: env.PARKING_FEE_CURRENCY,
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
@@ -45,10 +52,11 @@ export default async function NewReservationPage({
               parkingSpaceId={String(parkingSpace._id)}
               spaces={serializeObject(spaces)}
               disabled={parkingSpace.status === "maintenance"}
+              feeConfig={feeConfig}
             />
           </>
         ) : (
-          <ReservationForm spaces={serializeObject(spaces)} disabled={false} />
+          <ReservationForm spaces={serializeObject(spaces)} disabled={false} feeConfig={feeConfig} />
         )}
       </Card>
     </div>
