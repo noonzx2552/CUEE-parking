@@ -37,7 +37,7 @@ export default async function ReservationsPage() {
               {reservations.map((reservation) => (
                 <tr key={String(reservation._id)} className="border-b border-zinc-100 align-top">
                   <td className="py-4 pr-4 font-medium text-zinc-900">
-                    {(reservation.parkingSpaceId as { code?: string }).code ?? "Unknown"}
+                    {(reservation.parkingSpaceId as { code?: string } | null)?.code ?? "Unknown"}
                   </td>
                   <td className="py-4 pr-4 text-zinc-600">
                     {formatDateTime(reservation.startTime)} - {formatDateTime(reservation.endTime)}

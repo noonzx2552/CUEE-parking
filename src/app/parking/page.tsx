@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/select";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getParkingSpaces, getUserReservations } from "@/lib/data";
 import { getLocale } from "@/lib/i18n-server";
+import { serializeObject } from "@/lib/utils";
 
 export default async function ParkingPage({
   searchParams,
@@ -31,7 +32,17 @@ export default async function ParkingPage({
 
   const scannableSpaceIds = reservations
     .filter((reservation) => ["pending", "confirmed", "checked-in"].includes(reservation.status))
-    .map((reservation) => String((reservation.parkingSpaceId as { _id?: string })._id ?? reservation.parkingSpaceId));
+    .map((reservation) => {
+      const parkingSpace = reservation.parkingSpaceId as { _id?: string } | string | null | undefined;
+      if (!parkingSpace) return null;
+
+      if (typeof parkingSpace === "string") {
+        return parkingSpace;
+      }
+
+      return parkingSpace._id ? String(parkingSpace._id) : null;
+    })
+    .filter((spaceId): spaceId is string => Boolean(spaceId));
 
   const queryString = new URLSearchParams(
     Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
@@ -151,7 +162,7 @@ export default async function ParkingPage({
       </Card>
 
       <ParkingGrid
-        initialSpaces={JSON.parse(JSON.stringify(spaces))}
+        initialSpaces={serializeObject(spaces)}
         queryString={queryString}
         locale={locale}
         scannableSpaceIds={scannableSpaceIds}

@@ -79,7 +79,7 @@ export default async function DashboardPage() {
             activeReservations.map((reservation) => (
               <div key={String(reservation._id)} className="rounded-2xl border border-zinc-200 p-4">
                 <p className="font-medium text-zinc-900">
-                  {(reservation.parkingSpaceId as { code?: string }).code ?? text.dashboard.unknownSpot}
+                  {(reservation.parkingSpaceId as { code?: string } | null)?.code ?? text.dashboard.unknownSpot}
                 </p>
                 <p className="mt-1 text-sm text-zinc-600">
                   {formatDateTime(reservation.startTime)} - {formatDateTime(reservation.endTime)}
