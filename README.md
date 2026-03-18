@@ -30,6 +30,7 @@ LINE_OA_ID=
 LINE_ADD_FRIEND_URL=
 DISCORD_WEBHOOK_URL=
 APP_NAME=CUEE Parking
+UPCOMING_REMINDER_MINUTES=30
 PARKING_FEE_NORMAL_PER_HOUR=20
 PARKING_FEE_EV_PER_HOUR=30
 PARKING_FEE_DISABLED_PER_HOUR=0
@@ -44,6 +45,7 @@ Notes:
 - `LINE_OA_ID` is used to open the LINE OA chat with a prefilled connect message.
 - `LINE_ADD_FRIEND_URL` is an optional add-friend link for the LINE OA/bot.
 - `DISCORD_WEBHOOK_URL` is optional. If missing, Discord events are skipped gracefully.
+- `UPCOMING_REMINDER_MINUTES` controls how many minutes before the reservation start the system refers to as the upcoming reminder window.
 - Parking fees are configurable per hour through the `PARKING_FEE_*` variables.
 
 ## Install and run

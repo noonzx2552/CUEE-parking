@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 export const SESSION_COOKIE_NAME = "cuee_session";
 export const CSRF_COOKIE_NAME = "cuee_csrf";
 export const CSRF_HEADER_NAME = "x-csrf-token";
@@ -12,4 +14,4 @@ export const CHECK_IN_GRACE_MINUTES = 10;
 export const CHECK_IN_OPEN_BEFORE_MINUTES = 30;
 export const QR_TOKEN_TTL_SECONDS = 60;
 export const REALTIME_REFRESH_INTERVAL_MS = 5000;
-export const UPCOMING_REMINDER_MINUTES = 30;
+export const UPCOMING_REMINDER_MINUTES = env.UPCOMING_REMINDER_MINUTES;

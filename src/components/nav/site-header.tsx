@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { LanguageSwitcher } from "@/components/nav/language-switcher";
 import { LogoutButton } from "@/components/nav/logout-button";
+import { MobileNav } from "@/components/nav/mobile-nav";
 import { Button } from "@/components/ui/button";
 import { t, type Locale } from "@/lib/i18n";
 
@@ -23,7 +24,7 @@ export function SiteHeader({
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/30 bg-white/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+      <div className="relative mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-600 text-lg font-semibold text-white">
             CP
@@ -72,6 +73,7 @@ export function SiteHeader({
             )}
           </nav>
         </div>
+        <MobileNav user={user} locale={locale} serverTimeLabel={serverTimeLabel} />
       </div>
     </header>
   );

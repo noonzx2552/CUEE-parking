@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { MessageSquareMore } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, MessageSquareMore } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,48 @@ export function LineConnectLauncher({
   const router = useRouter();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isLinked, setIsLinked] = useState(Boolean(hasLineConnection));
+  const [showSuccessState, setShowSuccessState] = useState(false);
+  const hasShownSuccessRef = useRef(Boolean(hasLineConnection));
+
+  useEffect(() => {
+    if (isLinked) {
+      return;
+    }
+
+    let cancelled = false;
+    const intervalId = window.setInterval(async () => {
+      const response = await fetch("/api/auth/me", {
+        cache: "no-store",
+      });
+
+      if (!response.ok || cancelled) {
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.user?.lineUserId || cancelled) {
+        return;
+      }
+
+      setIsLinked(true);
+      setShowSuccessState(true);
+
+      if (!hasShownSuccessRef.current) {
+        hasShownSuccessRef.current = true;
+        toast.success("เชื่อมต่อ LINE เสร็จแล้ว");
+        window.setTimeout(() => {
+          router.push("/dashboard");
+          router.refresh();
+        }, 1500);
+      }
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isLinked, router]);
 
   async function openLineConnect() {
     setIsConnecting(true);
@@ -69,6 +111,9 @@ export function LineConnectLauncher({
       return;
     }
 
+    setIsLinked(false);
+    setShowSuccessState(false);
+    hasShownSuccessRef.current = false;
     toast.success("ยกเลิกการเชื่อม LINE แล้ว");
     router.refresh();
   }
@@ -88,7 +133,7 @@ export function LineConnectLauncher({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        {hasLineConnection ? null : (
+        {isLinked ? null : (
           <Button type="button" onClick={() => void openLineConnect()} disabled={isConnecting}>
             {isConnecting ? "กำลังเปิด LINE..." : "เปิด LINE เพื่อเชื่อมต่อ"}
           </Button>
@@ -100,7 +145,7 @@ export function LineConnectLauncher({
           </Button>
         </Link>
 
-        {hasLineConnection ? (
+        {isLinked ? (
           <Button type="button" variant="ghost" onClick={() => void disconnectLine()} disabled={isDisconnecting}>
             {isDisconnecting ? "กำลังยกเลิก..." : "ยกเลิกการเชื่อมต่อ"}
           </Button>
@@ -108,13 +153,20 @@ export function LineConnectLauncher({
       </div>
 
       <div className="mt-5 rounded-2xl border border-white/90 bg-white/90 p-4">
-        <p className="text-sm font-medium text-zinc-900">สถานะ: {hasLineConnection ? "เชื่อม LINE แล้ว" : "ยังไม่ได้เชื่อม LINE"}</p>
+        <p className="text-sm font-medium text-zinc-900">สถานะ: {isLinked ? "เชื่อม LINE แล้ว" : "ยังไม่ได้เชื่อม LINE"}</p>
         <p className="mt-2 text-sm text-zinc-600">
-          {hasLineConnection
+          {isLinked
             ? "ระบบพร้อมส่งแจ้งเตือนการจองเข้า LINE ของคุณ"
             : "หลังจาก LINE เปิดขึ้นมาแล้ว ให้กดส่งข้อความในแชตทันที แล้วรอข้อความตอบกลับว่าเชื่อมต่อสำเร็จ"}
         </p>
       </div>
+
+      {showSuccessState ? (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
+          <CheckCircle2 className="h-5 w-5" />
+          <p className="text-sm font-medium">เชื่อมต่อ LINE เสร็จแล้ว กำลังกลับไปหน้าแดชบอร์ด...</p>
+        </div>
+      ) : null}
     </div>
   );
 }
