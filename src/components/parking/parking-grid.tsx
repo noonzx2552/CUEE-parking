@@ -7,8 +7,8 @@ import { CarFront, QrCode, ShieldCheck, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { Locale } from "@/lib/i18n";
 import { REALTIME_REFRESH_INTERVAL_MS } from "@/lib/constants";
+import type { Locale } from "@/lib/i18n";
 import { parkingStatusColor, toTitleCase } from "@/lib/utils";
 import type { ParkingStatus, ParkingType } from "@/types";
 
@@ -42,6 +42,12 @@ function translateParkingStatus(status: ParkingStatus, isThai: boolean) {
     case "maintenance":
       return "ปิดปรับปรุง";
   }
+}
+
+function getParkingTypeIcon(type: ParkingType) {
+  if (type === "ev") return <Zap className="h-4 w-4" />;
+  if (type === "disabled") return <ShieldCheck className="h-4 w-4" />;
+  return null;
 }
 
 export function ParkingGrid({
@@ -103,21 +109,22 @@ export function ParkingGrid({
             </div>
 
             <div className="flex items-center gap-3 text-sm text-zinc-600">
-              {space.type === "ev" ? (
-                <Zap className="h-4 w-4" />
-              ) : space.type === "disabled" ? (
-                <ShieldCheck className="h-4 w-4" />
-              ) : (
-                <CarFront className="h-4 w-4" />
-              )}
+              {getParkingTypeIcon(space.type)}
               <span>{translateParkingType(space.type, isThai)}</span>
             </div>
+
+            {space.status === "occupied" ? (
+              <div className="flex items-center gap-3 text-sm font-medium text-zinc-700">
+                <CarFront className="h-4 w-4" />
+                <span>{isThai ? "มีรถจอดอยู่" : "Car is parked"}</span>
+              </div>
+            ) : null}
 
             <p className="text-sm text-zinc-600">
               {space.description || (isThai ? "ไม่มีรายละเอียดเพิ่มเติม" : "No additional notes")}
             </p>
 
-            <div className="grid gap-2 pt-2 sm:grid-cols-2">
+            <div className={`grid gap-2 pt-2 ${canScan ? "sm:grid-cols-2" : ""}`}>
               {space.status === "maintenance" ? (
                 <Button className="w-full" disabled>
                   {isThai ? "จองช่องนี้" : "Reserve this spot"}
@@ -135,12 +142,7 @@ export function ParkingGrid({
                     {isThai ? "สแกนเข้าออก" : "Scan access"}
                   </Button>
                 </Link>
-              ) : (
-                <Button variant="ghost" className="w-full gap-2" disabled>
-                  <QrCode className="h-4 w-4" />
-                  {isThai ? "สแกนได้เมื่อจองแล้ว" : "Scan after booking"}
-                </Button>
-              )}
+              ) : null}
             </div>
           </Card>
         );

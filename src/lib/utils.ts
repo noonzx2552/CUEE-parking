@@ -12,6 +12,18 @@ export function formatDateTime(value: Date | string) {
   return format(new Date(value), "dd MMM yyyy, HH:mm");
 }
 
+export function formatThailandSystemTime(value: Date | string, locale: "th" | "en" = "th") {
+  return new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-GB", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(value));
+}
+
 export function reservationOverlaps(
   startA: Date,
   endA: Date,

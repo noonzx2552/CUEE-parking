@@ -1,10 +1,10 @@
 import Link from "next/link";
 
-import { getCurrentUser } from "@/lib/auth/session";
 import { ParkingGrid } from "@/components/parking/parking-grid";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getParkingSpaces, getUserReservations } from "@/lib/data";
 import { getLocale } from "@/lib/i18n-server";
 
@@ -108,17 +108,19 @@ export default async function ParkingPage({
           </h2>
           <p className="mt-2 text-sm text-zinc-600">
             {isThai
-              ? "กดจองจากแต่ละช่องได้เลย หรือพิมพ์รหัสช่องด้านบนเพื่อค้นหา ส่วนปุ่มสแกนเข้าออกจะขึ้นเฉพาะช่องที่คุณจองอยู่เท่านั้น"
-              : "Reserve from each space directly, or search by code above. Scan access is shown only for spaces you have reserved."}
+              ? "เริ่มต้นแต่ละช่องจะมีแค่ปุ่มจองก่อน เมื่อคุณมีรายการจองแล้ว ปุ่มสแกนจะขึ้นเฉพาะช่องที่คุณจองอยู่เท่านั้น"
+              : "Each space starts with only the reserve button. After you book, scan access appears only on the space you reserved."}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Link href="/reservations/new" className="inline-flex h-11 items-center rounded-xl bg-sky-600 px-4 text-sm font-medium text-white">
             {isThai ? "เปิดหน้าจอง" : "Open booking"}
           </Link>
-          <Link href="/scan" className="inline-flex h-11 items-center rounded-xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700">
-            {isThai ? "เปิดหน้าสแกน" : "Open scanner"}
-          </Link>
+          {scannableSpaceIds.length ? (
+            <Link href="/scan" className="inline-flex h-11 items-center rounded-xl border border-zinc-200 px-4 text-sm font-medium text-zinc-700">
+              {isThai ? "เปิดหน้าสแกน" : "Open scanner"}
+            </Link>
+          ) : null}
         </div>
       </Card>
     </div>

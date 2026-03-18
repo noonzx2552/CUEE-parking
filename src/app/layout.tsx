@@ -8,6 +8,7 @@ import { VisitTracker } from "@/components/telemetry/visit-tracker";
 import { getCurrentUser } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 import { getLocale } from "@/lib/i18n-server";
+import { formatThailandSystemTime } from "@/lib/utils";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -35,6 +36,7 @@ export default async function RootLayout({
 }>) {
   const user = await getCurrentUser();
   const locale = await getLocale();
+  const serverTimeLabel = formatThailandSystemTime(new Date(), locale);
 
   return (
     <html lang={locale}>
@@ -43,7 +45,7 @@ export default async function RootLayout({
       >
         <CsrfBootstrap />
         <VisitTracker />
-        <SiteHeader user={user} locale={locale} />
+        <SiteHeader user={user} locale={locale} serverTimeLabel={serverTimeLabel} />
         <main className="min-h-[calc(100vh-76px)]">{children}</main>
         <Toaster richColors position="top-right" />
       </body>
