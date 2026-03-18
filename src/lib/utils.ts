@@ -40,12 +40,14 @@ export function reservationStatusColor(status: ReservationStatus) {
       return "bg-emerald-500/15 text-emerald-700 ring-emerald-600/20";
     case "pending":
       return "bg-amber-500/15 text-amber-700 ring-amber-600/20";
+    case "checked-in":
+      return "bg-sky-500/15 text-sky-700 ring-sky-600/20";
     case "cancelled":
       return "bg-rose-500/15 text-rose-700 ring-rose-600/20";
     case "expired":
       return "bg-zinc-500/15 text-zinc-700 ring-zinc-600/20";
     case "completed":
-      return "bg-sky-500/15 text-sky-700 ring-sky-600/20";
+      return "bg-violet-500/15 text-violet-700 ring-violet-600/20";
   }
 }
 

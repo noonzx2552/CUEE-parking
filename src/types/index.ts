@@ -6,6 +6,7 @@ export type ParkingType = "normal" | "ev" | "disabled";
 export type ReservationStatus =
   | "pending"
   | "confirmed"
+  | "checked-in"
   | "cancelled"
   | "expired"
   | "completed";

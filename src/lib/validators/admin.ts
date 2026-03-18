@@ -11,3 +11,7 @@ export const adminUserUpdateSchema = z.object({
 export const lineTestSchema = z.object({
   message: z.string().min(1).max(200).transform(sanitizePlainText),
 });
+
+export const discordTestSchema = z.object({
+  message: z.string().min(1).max(200).transform(sanitizePlainText),
+});

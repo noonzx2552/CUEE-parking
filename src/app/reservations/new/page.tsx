@@ -4,8 +4,8 @@ import { ReservationForm } from "@/components/parking/reservation-form";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getParkingSpaceById } from "@/lib/data";
-import { parkingStatusColor, toTitleCase } from "@/lib/utils";
+import { getParkingSpaceById, getParkingSpaces } from "@/lib/data";
+import { parkingStatusColor, serializeObject, toTitleCase } from "@/lib/utils";
 
 export default async function NewReservationPage({
   searchParams,
@@ -18,7 +18,10 @@ export default async function NewReservationPage({
 
   const params = await searchParams;
   const parkingSpaceId = typeof params.parkingSpaceId === "string" ? params.parkingSpaceId : "";
-  const parkingSpace = parkingSpaceId ? await getParkingSpaceById(parkingSpaceId) : null;
+  const [parkingSpace, spaces] = await Promise.all([
+    parkingSpaceId ? getParkingSpaceById(parkingSpaceId) : Promise.resolve(null),
+    getParkingSpaces({}),
+  ]);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
@@ -33,15 +36,19 @@ export default async function NewReservationPage({
               <div>
                 <h2 className="text-xl font-semibold text-zinc-950">{parkingSpace.code}</h2>
                 <p className="text-sm text-zinc-500">
-                  Zone {parkingSpace.zone} • {toTitleCase(parkingSpace.type)}
+                  Zone {parkingSpace.zone} | {toTitleCase(parkingSpace.type)}
                 </p>
               </div>
               <Badge className={parkingStatusColor(parkingSpace.status)}>{toTitleCase(parkingSpace.status)}</Badge>
             </div>
-            <ReservationForm parkingSpaceId={String(parkingSpace._id)} disabled={parkingSpace.status === "maintenance"} />
+            <ReservationForm
+              parkingSpaceId={String(parkingSpace._id)}
+              spaces={serializeObject(spaces)}
+              disabled={parkingSpace.status === "maintenance"}
+            />
           </>
         ) : (
-          <p className="text-sm text-zinc-500">Select a parking space from the parking list first.</p>
+          <ReservationForm spaces={serializeObject(spaces)} disabled={false} />
         )}
       </Card>
     </div>

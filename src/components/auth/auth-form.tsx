@@ -27,16 +27,32 @@ function getPasswordStrength(password: string) {
   if (/\d/.test(password)) score += 1;
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
 
-  if (score <= 1) return { label: "Weak", barClassName: "bg-rose-500", textClassName: "text-rose-600", width: "w-1/4" };
-  if (score <= 3) return { label: "Medium", barClassName: "bg-amber-500", textClassName: "text-amber-600", width: "w-2/4" };
-  if (score === 4) return { label: "Strong", barClassName: "bg-sky-500", textClassName: "text-sky-600", width: "w-3/4" };
-  return { label: "Very strong", barClassName: "bg-emerald-500", textClassName: "text-emerald-600", width: "w-full" };
+  if (score <= 1) {
+    return { key: "weak", barClassName: "bg-rose-500", textClassName: "text-rose-600", width: "w-1/4" };
+  }
+  if (score <= 3) {
+    return { key: "medium", barClassName: "bg-amber-500", textClassName: "text-amber-600", width: "w-2/4" };
+  }
+  if (score === 4) {
+    return { key: "strong", barClassName: "bg-sky-500", textClassName: "text-sky-600", width: "w-3/4" };
+  }
+
+  return { key: "very-strong", barClassName: "bg-emerald-500", textClassName: "text-emerald-600", width: "w-full" };
 }
 
-export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
+export function AuthForm({
+  mode,
+  locale,
+  redirectTo,
+}: {
+  mode: AuthMode;
+  locale: Locale;
+  redirectTo?: string;
+}) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const text = t(locale);
+  const isThai = locale === "th";
   const schema = mode === "login" ? loginSchema : registerSchema;
 
   type FormValues = {
@@ -48,11 +64,23 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as never,
-    defaultValues: mode === "register" ? { name: "", email: "", password: "", lineUserId: "" } : { email: "", password: "" },
+    defaultValues:
+      mode === "register"
+        ? { name: "", email: "", password: "", lineUserId: "" }
+        : { email: "", password: "" },
   });
 
   const passwordValue = useWatch({ control: form.control, name: "password" }) ?? "";
   const passwordStrength = getPasswordStrength(passwordValue);
+  const passwordStrengthLabel =
+    passwordStrength.key === "weak"
+      ? isThai ? "อ่อน" : "Weak"
+      : passwordStrength.key === "medium"
+        ? isThai ? "ปานกลาง" : "Medium"
+        : passwordStrength.key === "strong"
+          ? isThai ? "แข็งแรง" : "Strong"
+          : isThai ? "แข็งแรงมาก" : "Very strong";
+
   const passwordChecks = [
     { label: text.auth.checks.length, passed: passwordValue.length >= 8 },
     { label: text.auth.checks.mixedCase, passed: /[A-Z]/.test(passwordValue) && /[a-z]/.test(passwordValue) },
@@ -73,7 +101,12 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
 
     const data = await response.json();
     if (!response.ok) {
-      toast.error(data.message ?? "Request failed");
+      if (mode === "login" && response.status === 401) {
+        toast.error(isThai ? "Username หรือ password ผิด" : "Username or password is incorrect");
+        return;
+      }
+
+      toast.error(data.issues?.[0] ?? data.message ?? (isThai ? "ทำรายการไม่สำเร็จ" : "Request failed"));
       return;
     }
 
@@ -85,7 +118,7 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
     }
 
     toast.success(text.auth.signedInToast);
-    router.push(data.user.role === "admin" ? "/admin" : "/dashboard");
+    router.push(redirectTo || (data.user.role === "admin" ? "/admin" : "/dashboard"));
     router.refresh();
   });
 
@@ -113,11 +146,13 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
           </div>
         </>
       )}
+
       <div className="space-y-2">
         <label className="text-sm font-medium text-zinc-700">{text.auth.email}</label>
         <Input {...form.register("email")} type="email" placeholder="name@organization.edu" />
         <p className="text-xs text-rose-600">{String(form.formState.errors.email?.message ?? "")}</p>
       </div>
+
       <div className="space-y-2">
         <label className="text-sm font-medium text-zinc-700">{text.auth.password}</label>
         <div className="relative">
@@ -129,7 +164,7 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
           />
           <button
             type="button"
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? (isThai ? "ซ่อนรหัสผ่าน" : "Hide password") : isThai ? "แสดงรหัสผ่าน" : "Show password"}
             className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-zinc-500 transition hover:text-zinc-800"
             onClick={() => setShowPassword((current) => !current)}
           >
@@ -143,12 +178,15 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
               <div className={`h-full rounded-full transition-all ${passwordStrength.barClassName} ${passwordStrength.width}`} />
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className={passwordStrength.textClassName}>{text.auth.security}: {passwordStrength.label}</span>
+              <span className={passwordStrength.textClassName}>
+                {text.auth.security}: {passwordStrengthLabel}
+              </span>
               <span className="text-zinc-500">{text.auth.passwordHint}</span>
             </div>
           </div>
         ) : null}
       </div>
+
       <Button type="button" className="w-full gap-2" disabled={form.formState.isSubmitting} onClick={() => void submitHandler()}>
         {form.formState.isSubmitting ? (
           <>
@@ -161,6 +199,7 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
           text.auth.submitRegister
         )}
       </Button>
+
       {mode === "register" ? (
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4">
           <p className="text-sm font-medium text-zinc-800">{text.auth.checklist}</p>
@@ -168,7 +207,10 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
             {passwordChecks.map((item) => (
               <div
                 key={item.label}
-                className={cn("flex items-center gap-2 text-sm transition-all duration-200", item.passed ? "text-emerald-700" : "text-zinc-500")}
+                className={cn(
+                  "flex items-center gap-2 text-sm transition-all duration-200",
+                  item.passed ? "text-emerald-700" : "text-zinc-500",
+                )}
               >
                 {item.passed ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <XCircle className="h-4 w-4 shrink-0 opacity-70" />}
                 <span>{item.label}</span>
@@ -177,6 +219,7 @@ export function AuthForm({ mode, locale }: { mode: AuthMode; locale: Locale }) {
           </div>
         </div>
       ) : null}
+
       <p className="text-center text-sm text-zinc-500">
         {mode === "login" ? text.auth.needAccount : text.auth.haveAccount}{" "}
         <Link className="font-medium text-sky-700" href={mode === "login" ? "/register" : "/login"}>

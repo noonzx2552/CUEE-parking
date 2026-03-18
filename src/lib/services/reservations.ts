@@ -1,8 +1,13 @@
-import { addMilliseconds, addMinutes, isAfter } from "date-fns";
+import crypto from "node:crypto";
+
+import { addMilliseconds, addMinutes, addSeconds, isAfter, subMinutes } from "date-fns";
 import mongoose from "mongoose";
 
 import {
   CANCELLATION_LEAD_MINUTES,
+  CHECK_IN_GRACE_MINUTES,
+  CHECK_IN_OPEN_BEFORE_MINUTES,
+  QR_TOKEN_TTL_SECONDS,
   RESERVATION_LOCK_MS,
   RESERVATION_MAX_ACTIVE_PER_USER,
   UPCOMING_REMINDER_MINUTES,
@@ -17,7 +22,41 @@ import { ParkingSpaceModel } from "@/models/ParkingSpace";
 import { ReservationModel } from "@/models/Reservation";
 import { UserModel } from "@/models/User";
 
-const activeReservationStatuses = ["pending", "confirmed"];
+const activeReservationStatuses = ["pending", "confirmed", "checked-in"];
+
+async function syncParkingSpaceStatus(parkingSpaceId: string) {
+  const now = new Date();
+  const occupiedReservation = await ReservationModel.findOne({
+    parkingSpaceId,
+    status: "checked-in",
+    checkOutAt: null,
+  })
+    .sort({ checkInAt: -1 })
+    .lean();
+
+  const nextStatus = occupiedReservation
+    ? "occupied"
+    : (await ReservationModel.findOne({
+        parkingSpaceId,
+        status: { $in: ["pending", "confirmed"] },
+        checkInDeadline: { $gte: now },
+      })
+        .sort({ startTime: 1 })
+        .lean())
+      ? "reserved"
+      : "available";
+
+  await ParkingSpaceModel.findByIdAndUpdate(parkingSpaceId, {
+    $set: {
+      status: nextStatus,
+      lastStatusChangedAt: now,
+    },
+  });
+}
+
+function buildQrToken() {
+  return `${crypto.randomUUID()}_${crypto.randomBytes(16).toString("hex")}`;
+}
 
 export async function createReservation(input: {
   userId: string;
@@ -36,7 +75,7 @@ export async function createReservation(input: {
   const activeReservationsCount = await ReservationModel.countDocuments({
     userId: input.userId,
     status: { $in: activeReservationStatuses },
-    endTime: { $gt: now },
+    $or: [{ endTime: { $gt: now } }, { checkOutAt: null, status: "checked-in" }],
   });
 
   if (activeReservationsCount >= RESERVATION_MAX_ACTIVE_PER_USER) {
@@ -78,13 +117,12 @@ export async function createReservation(input: {
       parkingSpaceId: new mongoose.Types.ObjectId(input.parkingSpaceId),
       startTime: input.startTime,
       endTime: input.endTime,
+      checkInDeadline: addMinutes(input.startTime, CHECK_IN_GRACE_MINUTES),
       note: input.note ?? "",
       status: "confirmed",
     });
 
-    await ParkingSpaceModel.findByIdAndUpdate(input.parkingSpaceId, {
-      $set: { status: "reserved" },
-    });
+    await syncParkingSpaceStatus(input.parkingSpaceId);
 
     const user = await UserModel.findById(input.userId).lean();
     const requestContext = await getRequestContext();
@@ -156,6 +194,10 @@ export async function cancelReservation(input: {
     throw new AppError("Reservation cannot be cancelled", 409);
   }
 
+  if (reservation.status === "checked-in" || reservation.checkInAt) {
+    throw new AppError("Checked-in reservations cannot be cancelled", 409);
+  }
+
   const cutoff = addMinutes(new Date(), CANCELLATION_LEAD_MINUTES);
   if (!input.isAdmin && !isAfter(new Date(reservation.startTime), cutoff)) {
     throw new AppError(
@@ -170,9 +212,7 @@ export async function cancelReservation(input: {
   }
   await reservation.save();
 
-  await ParkingSpaceModel.findByIdAndUpdate(String(reservation.parkingSpaceId._id), {
-    $set: { status: "available" },
-  });
+  await syncParkingSpaceStatus(String(reservation.parkingSpaceId._id));
 
   const requestContext = await getRequestContext();
   await createAuditLog({
@@ -206,6 +246,147 @@ export async function cancelReservation(input: {
     "Reservation Cancelled",
     `Reservation ${String(reservation._id)} for ${parkingSpace.code} was cancelled.`,
   );
+
+  return reservation;
+}
+
+export async function generateReservationQr(input: {
+  reservationId: string;
+  actorUserId: string;
+  isAdmin?: boolean;
+  mode: "entry" | "exit";
+}) {
+  await connectToDatabase();
+
+  const reservation = await ReservationModel.findById(input.reservationId)
+    .populate("parkingSpaceId")
+    .populate("userId");
+
+  if (!reservation) {
+    throw new AppError("Reservation not found", 404);
+  }
+
+  if (!input.isAdmin && String(reservation.userId._id) !== input.actorUserId) {
+    throw new AppError("Forbidden", 403);
+  }
+
+  if (input.mode === "entry") {
+    if (!["pending", "confirmed"].includes(reservation.status) || reservation.checkInAt) {
+      throw new AppError("Entry QR is only available before check-in", 409);
+    }
+  } else if (reservation.status !== "checked-in" || !reservation.checkInAt || reservation.checkOutAt) {
+    throw new AppError("Exit QR is available only after check-in", 409);
+  }
+
+  const token = buildQrToken();
+  const expiresAt = addSeconds(new Date(), QR_TOKEN_TTL_SECONDS);
+
+  if (input.mode === "entry") {
+    reservation.entryQrToken = token;
+    reservation.entryQrExpiresAt = expiresAt;
+  } else {
+    reservation.exitQrToken = token;
+    reservation.exitQrExpiresAt = expiresAt;
+  }
+
+  await reservation.save();
+
+  return {
+    reservationId: String(reservation._id),
+    parkingCode: (reservation.parkingSpaceId as { code?: string }).code ?? "Unknown",
+    mode: input.mode,
+    token,
+    expiresAt,
+  };
+}
+
+export async function processReservationAccess(input: {
+  actorUserId: string;
+  isAdmin?: boolean;
+  mode: "entry" | "exit";
+  token: string;
+}) {
+  await connectToDatabase();
+
+  const tokenField = input.mode === "entry" ? "entryQrToken" : "exitQrToken";
+  const expiryField = input.mode === "entry" ? "entryQrExpiresAt" : "exitQrExpiresAt";
+
+  const reservation = await ReservationModel.findOne({
+    [tokenField]: input.token,
+  })
+    .populate("parkingSpaceId")
+    .populate("userId");
+
+  if (!reservation) {
+    throw new AppError("QR code is invalid or has already been rotated", 404);
+  }
+
+  if (!input.isAdmin && String(reservation.userId._id) !== input.actorUserId) {
+    throw new AppError("Forbidden", 403);
+  }
+
+  const expiryValue = reservation[expiryField];
+  const now = new Date();
+  if (!(expiryValue instanceof Date) || expiryValue.getTime() < now.getTime()) {
+    throw new AppError("QR code expired. Please generate a new one.", 409);
+  }
+
+  if (input.mode === "entry") {
+    if (reservation.status === "checked-in" || reservation.checkInAt) {
+      throw new AppError("This reservation has already checked in", 409);
+    }
+
+    if (!["pending", "confirmed"].includes(reservation.status)) {
+      throw new AppError("Reservation is not available for entry", 409);
+    }
+
+    const checkInOpensAt = subMinutes(new Date(reservation.startTime), CHECK_IN_OPEN_BEFORE_MINUTES);
+    if (now.getTime() < checkInOpensAt.getTime()) {
+      throw new AppError("Check-in is not open yet for this reservation", 409);
+    }
+
+    if (now.getTime() > new Date(reservation.checkInDeadline).getTime()) {
+      reservation.status = "expired";
+      reservation.entryQrToken = null;
+      reservation.entryQrExpiresAt = null;
+      await reservation.save();
+      await syncParkingSpaceStatus(String(reservation.parkingSpaceId._id));
+      throw new AppError("Check-in window has expired", 409);
+    }
+
+    reservation.status = "checked-in";
+    reservation.checkInAt = now;
+    reservation.entryQrToken = null;
+    reservation.entryQrExpiresAt = null;
+    reservation.exitQrToken = null;
+    reservation.exitQrExpiresAt = null;
+  } else {
+    if (reservation.status !== "checked-in" || !reservation.checkInAt || reservation.checkOutAt) {
+      throw new AppError("Reservation is not currently parked in the system", 409);
+    }
+
+    reservation.status = "completed";
+    reservation.checkOutAt = now;
+    reservation.exitQrToken = null;
+    reservation.exitQrExpiresAt = null;
+  }
+
+  await reservation.save();
+  await syncParkingSpaceStatus(String(reservation.parkingSpaceId._id));
+
+  const requestContext = await getRequestContext();
+  await createAuditLog({
+    actorUserId: input.actorUserId,
+    action: input.mode === "entry" ? "reservation.check_in" : "reservation.check_out",
+    targetType: "reservation",
+    targetId: String(reservation._id),
+    metadata: {
+      parkingCode: (reservation.parkingSpaceId as { code?: string }).code ?? "Unknown",
+      mode: input.mode,
+      at: now.toISOString(),
+    },
+    ...requestContext,
+  });
 
   return reservation;
 }

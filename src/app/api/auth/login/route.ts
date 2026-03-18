@@ -29,7 +29,16 @@ export const POST = withErrorHandler(async (request) => {
     });
   } catch (error) {
     if (error instanceof AppError && error.statusCode === 401) {
-      void sendDiscordEvent("Repeated Login Failure", `Failed login attempt for ${payload.email}`);
+      void sendDiscordEvent("Repeated Login Failure", {
+        description: "A login attempt failed.",
+        color: 0xef4444,
+        fields: [
+          {
+            name: "Username / Email",
+            value: payload.email,
+          },
+        ],
+      });
     }
     throw error;
   }

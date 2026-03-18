@@ -2,6 +2,7 @@ import { endOfDay, startOfDay } from "date-fns";
 import mongoose from "mongoose";
 
 import { connectToDatabase } from "@/lib/db/mongoose";
+import { reconcileReservationStatuses } from "@/lib/services/reconciliation";
 import { ParkingSpaceModel } from "@/models/ParkingSpace";
 import { ReservationModel } from "@/models/Reservation";
 import { UserModel } from "@/models/User";
@@ -60,6 +61,7 @@ export async function getParkingSpaces(filters?: {
 }) {
   await connectToDatabase();
   await ensureDefaultParkingSpaces();
+  await reconcileReservationStatuses();
 
   const query: Record<string, unknown> = {};
   if (filters?.zone) query.zone = filters.zone;
@@ -73,6 +75,7 @@ export async function getParkingSpaces(filters?: {
 export async function getParkingSpaceById(id: string) {
   await connectToDatabase();
   await ensureDefaultParkingSpaces();
+  await reconcileReservationStatuses();
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return null;
   }
@@ -81,6 +84,7 @@ export async function getParkingSpaceById(id: string) {
 
 export async function getUserReservations(userId: string) {
   await connectToDatabase();
+  await reconcileReservationStatuses();
   return ReservationModel.find({ userId })
     .populate("parkingSpaceId")
     .sort({ startTime: -1 })
@@ -89,6 +93,7 @@ export async function getUserReservations(userId: string) {
 
 export async function getAdminReservations() {
   await connectToDatabase();
+  await reconcileReservationStatuses();
   return ReservationModel.find({})
     .populate("parkingSpaceId")
     .populate("userId")

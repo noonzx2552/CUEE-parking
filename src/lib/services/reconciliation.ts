@@ -9,24 +9,50 @@ export async function reconcileReservationStatuses() {
   await ReservationModel.updateMany(
     {
       status: { $in: ["pending", "confirmed"] },
+      checkInDeadline: { $lt: now },
+      checkInAt: null,
+    },
+    { $set: { status: "expired" } },
+  );
+
+  await ReservationModel.updateMany(
+    {
+      status: { $in: ["pending", "confirmed"] },
       endTime: { $lt: now },
     },
     { $set: { status: "expired" } },
   );
 
-  const activeSpaceIds = await ReservationModel.distinct("parkingSpaceId", {
+  const reservedSpaceIds = await ReservationModel.distinct("parkingSpaceId", {
     status: { $in: ["pending", "confirmed"] },
-    startTime: { $lte: now },
-    endTime: { $gte: now },
+    checkInDeadline: { $gte: now },
   });
 
+  const occupiedSpaceIds = await ReservationModel.distinct("parkingSpaceId", {
+    status: "checked-in",
+    checkOutAt: null,
+  });
+  const occupiedSpaceIdSet = new Set(occupiedSpaceIds.map((id) => String(id)));
+  const reservedOnlySpaceIds = reservedSpaceIds.filter((id) => !occupiedSpaceIdSet.has(String(id)));
+
   await ParkingSpaceModel.updateMany(
-    { _id: { $nin: activeSpaceIds }, status: { $ne: "maintenance" } },
-    { $set: { status: "available" } },
+    {
+      _id: { $nin: [...reservedSpaceIds, ...occupiedSpaceIds] },
+      status: { $ne: "maintenance" },
+    },
+    { $set: { status: "available", lastStatusChangedAt: now } },
   );
 
   await ParkingSpaceModel.updateMany(
-    { _id: { $in: activeSpaceIds }, status: { $ne: "maintenance" } },
-    { $set: { status: "reserved" } },
+    {
+      _id: { $in: reservedOnlySpaceIds },
+      status: { $ne: "maintenance" },
+    },
+    { $set: { status: "reserved", lastStatusChangedAt: now } },
+  );
+
+  await ParkingSpaceModel.updateMany(
+    { _id: { $in: occupiedSpaceIds }, status: { $ne: "maintenance" } },
+    { $set: { status: "occupied", lastStatusChangedAt: now } },
   );
 }

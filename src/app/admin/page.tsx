@@ -1,13 +1,27 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DiscordWebhookCard } from "@/components/admin/discord-webhook-card";
 import { StatsChart } from "@/components/admin/stats-chart";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getAdminStats } from "@/lib/data";
+import { env } from "@/lib/env";
 import { t } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
+
+function maskWebhookUrl(value: string) {
+  if (!value) {
+    return "Not configured";
+  }
+
+  if (value.length <= 22) {
+    return value;
+  }
+
+  return `${value.slice(0, 18)}...${value.slice(-10)}`;
+}
 
 export default async function AdminDashboardPage() {
   const user = await getCurrentUser();
@@ -17,6 +31,8 @@ export default async function AdminDashboardPage() {
   if (user.role !== "admin") redirect("/dashboard");
 
   const stats = await getAdminStats();
+  const discordConfigured = Boolean(env.DISCORD_WEBHOOK_URL);
+  const discordWebhookLabel = maskWebhookUrl(env.DISCORD_WEBHOOK_URL);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
@@ -66,6 +82,8 @@ export default async function AdminDashboardPage() {
           </Link>
         </Card>
       </div>
+
+      <DiscordWebhookCard configured={discordConfigured} webhookLabel={discordWebhookLabel} />
     </div>
   );
 }

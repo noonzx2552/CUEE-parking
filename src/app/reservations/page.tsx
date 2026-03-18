@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { ReservationCancelButton } from "@/components/reservations/reservation-actions";
+import { ReservationActions } from "@/components/reservations/reservation-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -39,16 +39,15 @@ export default async function ReservationsPage() {
                   </td>
                   <td className="py-4 pr-4 text-zinc-600">
                     {formatDateTime(reservation.startTime)} - {formatDateTime(reservation.endTime)}
+                    <p className="mt-1 text-xs text-zinc-500">
+                      เช็กอินได้ถึง {formatDateTime(reservation.checkInDeadline ?? reservation.startTime)}
+                    </p>
                   </td>
                   <td className="py-4 pr-4">
                     <Badge className={reservationStatusColor(reservation.status)}>{toTitleCase(reservation.status)}</Badge>
                   </td>
                   <td className="py-4 pr-4">
-                    {["pending", "confirmed"].includes(reservation.status) ? (
-                      <ReservationCancelButton reservationId={String(reservation._id)} />
-                    ) : (
-                      <span className="text-zinc-400">N/A</span>
-                    )}
+                    <ReservationActions reservationId={String(reservation._id)} reservationStatus={reservation.status} />
                   </td>
                 </tr>
               ))}

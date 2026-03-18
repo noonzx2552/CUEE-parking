@@ -14,6 +14,7 @@ const parkingSpaceSchema = new Schema(
     },
     description: { type: String, default: "", trim: true, maxlength: 280 },
     reservationLockUntil: { type: Date, default: null, index: true },
+    lastStatusChangedAt: { type: Date, default: Date.now },
   },
   { timestamps: true },
 );

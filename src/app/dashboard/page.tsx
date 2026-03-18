@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     getUserReservations(user.id),
   ]);
 
-  const activeReservations = reservations.filter((item) => ["pending", "confirmed"].includes(item.status)).slice(0, 3);
+  const activeReservations = reservations.filter((item) => ["pending", "confirmed", "checked-in"].includes(item.status)).slice(0, 3);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-6 py-8">

@@ -20,6 +20,15 @@ export const reservationCancelSchema = z.object({
 });
 
 export const adminReservationUpdateSchema = z.object({
-  status: z.enum(["pending", "confirmed", "cancelled", "expired", "completed"]),
+  status: z.enum(["pending", "confirmed", "checked-in", "cancelled", "expired", "completed"]),
   note: z.string().max(280).optional().transform((value) => sanitizePlainText(value ?? "")),
+});
+
+export const reservationQrSchema = z.object({
+  mode: z.enum(["entry", "exit"]),
+});
+
+export const reservationAccessSchema = z.object({
+  mode: z.enum(["entry", "exit"]),
+  token: z.string().min(1),
 });

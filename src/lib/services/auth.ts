@@ -22,7 +22,7 @@ export async function registerUser(input: {
 
   const existingUser = await UserModel.findOne({ email: input.email }).lean();
   if (existingUser) {
-    throw new AppError("Unable to create account", 409);
+    throw new AppError("เมลนี้ถูกใช้งานแล้ว", 409);
   }
 
   const passwordHash = await bcrypt.hash(input.password, 12);
