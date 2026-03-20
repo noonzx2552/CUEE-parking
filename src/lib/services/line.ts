@@ -45,6 +45,43 @@ export async function pushLineMessage(lineUserId: string | null | undefined, mes
   }
 }
 
+export async function pushLinePayload(
+  lineUserId: string | null | undefined,
+  messages: Array<Record<string, unknown>>,
+) {
+  if (!lineUserId) {
+    return { ok: false, reason: "missing-binding" } satisfies LinePushResult;
+  }
+
+  if (!env.LINE_CHANNEL_ACCESS_TOKEN) {
+    return { ok: false, reason: "missing-token" } satisfies LinePushResult;
+  }
+
+  try {
+    const response = await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        to: lineUserId,
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("LINE push payload failed", response.status, await response.text());
+      return { ok: false, reason: "request-failed" } satisfies LinePushResult;
+    }
+
+    return { ok: true } satisfies LinePushResult;
+  } catch (error) {
+    console.error("LINE push payload request failed", String(error));
+    return { ok: false, reason: "request-failed" } satisfies LinePushResult;
+  }
+}
+
 export async function replyLineMessage(replyToken: string | null | undefined, messages: string[]) {
   if (!replyToken || !env.LINE_CHANNEL_ACCESS_TOKEN) {
     return { ok: false, reason: "missing-token" } satisfies LineReplyResult;
