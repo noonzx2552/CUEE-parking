@@ -88,7 +88,9 @@ export async function getAdminReservations() {
 }
 
 export async function getAdminUsers() {
-  return (await listUsers()).map(({ passwordHash, ...user }) => user);
+  return (await listUsers()).map((user) =>
+    Object.fromEntries(Object.entries(user).filter(([key]) => key !== "passwordHash")),
+  );
 }
 
 export async function getAdminStats() {

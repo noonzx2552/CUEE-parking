@@ -29,6 +29,7 @@ LINE_CHANNEL_SECRET=
 LINE_OA_ID=
 LINE_ADD_FRIEND_URL=
 DISCORD_WEBHOOK_URL=
+CRON_SECRET=
 APP_NAME=CUEE Parking
 UPCOMING_REMINDER_MINUTES=30
 PARKING_FEE_NORMAL_PER_HOUR=20
@@ -45,8 +46,37 @@ Notes:
 - `LINE_OA_ID` is used to open the LINE OA chat with a prefilled connect message.
 - `LINE_ADD_FRIEND_URL` is an optional add-friend link for the LINE OA/bot.
 - `DISCORD_WEBHOOK_URL` is optional. If missing, Discord events are skipped gracefully.
+- `CRON_SECRET` is optional for local development, but recommended on Vercel so scheduled jobs are authenticated.
 - `UPCOMING_REMINDER_MINUTES` controls how many minutes before the reservation start the system refers to as the upcoming reminder window.
 - Parking fees are configurable per hour through the `PARKING_FEE_*` variables.
+
+## Vercel deployment
+
+This branch is ready for Vercel as a standard Next.js project.
+
+Project settings:
+
+- Framework Preset: `Next.js`
+- Root Directory: repository root
+- Build Command: leave default (`npm run build`)
+- Output Directory: leave default
+
+Required Vercel Environment Variables:
+
+- `REDIS_URL`
+- `SESSION_SECRET`
+
+Recommended Vercel Environment Variables:
+
+- `APP_BASE_URL`
+- `CRON_SECRET`
+- `LINE_CHANNEL_ACCESS_TOKEN`
+- `LINE_CHANNEL_SECRET`
+- `LINE_OA_ID`
+- `LINE_ADD_FRIEND_URL`
+- `DISCORD_WEBHOOK_URL`
+
+The included `vercel.json` schedules `GET /api/jobs/reconcile-reservations` once per day. If `CRON_SECRET` is set in Vercel, the cron request must include the matching bearer token.
 
 ## Install and run
 

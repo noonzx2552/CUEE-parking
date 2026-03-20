@@ -23,7 +23,9 @@ export const PATCH = withErrorHandler(async (request, context) => {
     throw new AppError("User not found", 404);
   }
 
-  const { passwordHash: _passwordHash, ...safeUser } = user;
+  const safeUser = Object.fromEntries(
+    Object.entries(user).filter(([key]) => key !== "passwordHash"),
+  );
 
   await createAuditLog({
     actorUserId: admin.id,

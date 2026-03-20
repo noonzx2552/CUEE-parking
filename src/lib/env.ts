@@ -14,6 +14,7 @@ const envSchema = z.object({
   LINE_OA_ID: z.string().optional().default(""),
   LINE_ADD_FRIEND_URL: z.string().url().optional().or(z.literal("")).default(""),
   DISCORD_WEBHOOK_URL: z.string().url().optional().or(z.literal("")).default(""),
+  CRON_SECRET: z.string().optional().default(""),
   APP_NAME: z.string().default("CUEE Parking"),
   APP_BASE_URL: z.string().url().optional().or(z.literal("")).default(""),
   APP_TIMEZONE: z.string().default("Asia/Bangkok"),
