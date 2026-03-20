@@ -2,9 +2,8 @@ import crypto from "node:crypto";
 
 import { requireSession } from "@/lib/auth/session";
 import { withErrorHandler, jsonOk } from "@/lib/api";
-import { connectToDatabase } from "@/lib/db/mongoose";
 import { env } from "@/lib/env";
-import { UserModel } from "@/models/User";
+import { updateUser } from "@/lib/db/store";
 import { verifyCsrfToken } from "@/lib/security/csrf";
 import { createAuditLog } from "@/lib/services/audit-log";
 import { getRequestContext } from "@/lib/security/request";
@@ -15,15 +14,12 @@ export const POST = withErrorHandler(async (request) => {
   await verifyCsrfToken(request);
   const session = await requireSession();
 
-  await connectToDatabase();
   const token = crypto.randomBytes(4).toString("hex").toUpperCase();
   const expiresAt = new Date(Date.now() + LINE_BIND_TOKEN_TTL_MS);
 
-  await UserModel.findByIdAndUpdate(session.id, {
-    $set: {
-      lineBindToken: token,
-      lineBindExpiresAt: expiresAt,
-    },
+  await updateUser(session.id, {
+    lineBindToken: token,
+    lineBindExpiresAt: expiresAt.toISOString(),
   });
 
   await createAuditLog({

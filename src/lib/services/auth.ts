@@ -1,9 +1,8 @@
 import bcrypt from "bcryptjs";
 
-import { connectToDatabase } from "@/lib/db/mongoose";
 import { AppError } from "@/lib/errors";
 import { createSession } from "@/lib/auth/session";
-import { UserModel } from "@/models/User";
+import { createUser, findUserByEmail } from "@/lib/db/store";
 import { createAuditLog } from "@/lib/services/audit-log";
 import { sendDiscordEvent } from "@/lib/services/discord";
 import { getRequestContext } from "@/lib/security/request";
@@ -18,26 +17,27 @@ export async function registerUser(input: {
   password: string;
   lineUserId?: string;
 }) {
-  await connectToDatabase();
-
-  const existingUser = await UserModel.findOne({ email: input.email }).lean();
+  const email = input.email.trim().toLowerCase();
+  const existingUser = await findUserByEmail(email);
   if (existingUser) {
-    throw new AppError("เมลนี้ถูกใช้งานแล้ว", 409);
+    throw new AppError("อีเมลนี้ถูกใช้งานแล้ว", 409);
   }
 
   const passwordHash = await bcrypt.hash(input.password, 12);
-  const user = await UserModel.create({
+  const user = await createUser({
     name: input.name,
-    username: usernameFromEmail(input.email),
-    email: input.email,
+    username: usernameFromEmail(email),
+    email,
     passwordHash,
     role: "user",
     lineUserId: input.lineUserId || null,
+    lineBindToken: null,
+    lineBindExpiresAt: null,
     isActive: true,
   });
 
   await createSession({
-    id: String(user._id),
+    id: user._id,
     email: user.email,
     name: user.name,
     role: user.role,
@@ -46,34 +46,30 @@ export async function registerUser(input: {
 
   const requestContext = await getRequestContext();
   await createAuditLog({
-    actorUserId: String(user._id),
+    actorUserId: user._id,
     action: "auth.register",
     targetType: "user",
-    targetId: String(user._id),
+    targetId: user._id,
     metadata: { email: user.email },
     ...requestContext,
   });
 
-  void sendDiscordEvent(
-    "New Account Registered",
-    `User ${user.email} created a new account.`,
-  );
+  void sendDiscordEvent("New Account Registered", `User ${user.email} created a new account.`);
 
   return user;
 }
 
 export async function loginUser(input: { email: string; password: string }) {
-  await connectToDatabase();
-
-  const user = await UserModel.findOne({ email: input.email });
+  const email = input.email.trim().toLowerCase();
+  const user = await findUserByEmail(email);
   const requestContext = await getRequestContext();
 
   if (!user || !user.isActive) {
     await createAuditLog({
       action: "auth.login.failed",
       targetType: "auth",
-      targetId: input.email,
-      metadata: { email: input.email },
+      targetId: email,
+      metadata: { email },
       ...requestContext,
     });
     throw new AppError("Invalid credentials", 401);
@@ -82,18 +78,18 @@ export async function loginUser(input: { email: string; password: string }) {
   const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
   if (!passwordMatches) {
     await createAuditLog({
-      actorUserId: String(user._id),
+      actorUserId: user._id,
       action: "auth.login.failed",
       targetType: "auth",
-      targetId: String(user._id),
-      metadata: { email: input.email },
+      targetId: user._id,
+      metadata: { email },
       ...requestContext,
     });
     throw new AppError("Invalid credentials", 401);
   }
 
   await createSession({
-    id: String(user._id),
+    id: user._id,
     email: user.email,
     name: user.name,
     role: user.role,
@@ -101,10 +97,10 @@ export async function loginUser(input: { email: string; password: string }) {
   });
 
   await createAuditLog({
-    actorUserId: String(user._id),
+    actorUserId: user._id,
     action: "auth.login.success",
     targetType: "user",
-    targetId: String(user._id),
+    targetId: user._id,
     metadata: { email: user.email },
     ...requestContext,
   });

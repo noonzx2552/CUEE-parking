@@ -1,8 +1,7 @@
 import { requireAdminSession } from "@/lib/auth/session";
 import { withErrorHandler, jsonOk } from "@/lib/api";
-import { connectToDatabase } from "@/lib/db/mongoose";
 import { AppError } from "@/lib/errors";
-import { ReservationModel } from "@/models/Reservation";
+import { getReservationById, hydrateReservation, updateReservation } from "@/lib/db/store";
 import { adminReservationUpdateSchema } from "@/lib/validators/reservation";
 import { verifyCsrfToken } from "@/lib/security/csrf";
 import { createAuditLog } from "@/lib/services/audit-log";
@@ -26,12 +25,15 @@ export const PATCH = withErrorHandler(async (request, context) => {
     return jsonOk({ reservation });
   }
 
-  await connectToDatabase();
-  const reservation = await ReservationModel.findByIdAndUpdate(
-    params?.id,
-    { $set: { status: payload.status, note: payload.note ?? "" } },
-    { new: true },
-  );
+  const existing = await getReservationById(params?.id ?? "");
+  if (!existing) {
+    throw new AppError("Reservation not found", 404);
+  }
+
+  const reservation = await updateReservation(existing._id, {
+    status: payload.status,
+    note: payload.note ?? "",
+  });
 
   if (!reservation) {
     throw new AppError("Reservation not found", 404);
@@ -46,5 +48,5 @@ export const PATCH = withErrorHandler(async (request, context) => {
     ...(await getRequestContext()),
   });
 
-  return jsonOk({ reservation });
+  return jsonOk({ reservation: await hydrateReservation(reservation) });
 });

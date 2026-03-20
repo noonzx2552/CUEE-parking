@@ -1,17 +1,16 @@
-import mongoose from "mongoose";
-
 import { withErrorHandler, jsonOk } from "@/lib/api";
-import { connectToDatabase } from "@/lib/db/mongoose";
+import { connectToDatabase } from "@/lib/db/redis";
 import { env } from "@/lib/env";
 
 export const GET = withErrorHandler(async () => {
-  await connectToDatabase();
+  const redis = await connectToDatabase();
+  const ping = await redis.ping();
 
   return jsonOk({
-    ok: true,
-    readyState: mongoose.connection.readyState,
-    dbName: mongoose.connection.name,
-    hasMongoUri: Boolean(env.MONGODB_URI),
+    ok: ping === "PONG",
+    engine: "redis",
+    ping,
+    hasRedisUrl: Boolean(env.REDIS_URL),
     hasSessionSecret: Boolean(env.SESSION_SECRET),
     hasDiscordWebhook: Boolean(env.DISCORD_WEBHOOK_URL),
   });

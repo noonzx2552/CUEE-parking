@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 
-import { addMilliseconds, addMinutes, addSeconds, isAfter, subMinutes } from "date-fns";
-import mongoose from "mongoose";
+import { addMinutes, addSeconds, isAfter, subMinutes } from "date-fns";
 
 import {
   CANCELLATION_LEAD_MINUTES,
@@ -12,7 +11,18 @@ import {
   RESERVATION_MAX_ACTIVE_PER_USER,
   UPCOMING_REMINDER_MINUTES,
 } from "@/lib/constants";
-import { connectToDatabase } from "@/lib/db/mongoose";
+import {
+  acquireParkingLock,
+  createReservationRecord,
+  getParkingSpaceByIdRecord,
+  getReservationById,
+  getUserById,
+  hydrateReservation,
+  listReservations,
+  releaseParkingLock,
+  updateParkingSpace,
+  updateReservation,
+} from "@/lib/db/store";
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { calculateParkingFee, formatParkingFee } from "@/lib/parking-fees";
@@ -20,9 +30,6 @@ import { createAuditLog } from "@/lib/services/audit-log";
 import { sendDiscordEvent } from "@/lib/services/discord";
 import { pushLineMessage } from "@/lib/services/line";
 import { getRequestContext } from "@/lib/security/request";
-import { ParkingSpaceModel } from "@/models/ParkingSpace";
-import { ReservationModel } from "@/models/Reservation";
-import { UserModel } from "@/models/User";
 
 const activeReservationStatuses = ["pending", "confirmed", "checked-in"];
 const parkingFeeConfig = {
@@ -33,32 +40,32 @@ const parkingFeeConfig = {
 };
 
 async function syncParkingSpaceStatus(parkingSpaceId: string) {
-  const now = new Date();
-  const occupiedReservation = await ReservationModel.findOne({
-    parkingSpaceId,
-    status: "checked-in",
-    checkOutAt: null,
-  })
-    .sort({ checkInAt: -1 })
-    .lean();
+  const now = Date.now();
+  const reservations = await listReservations();
 
-  const nextStatus = occupiedReservation
-    ? "occupied"
-    : (await ReservationModel.findOne({
-        parkingSpaceId,
-        status: { $in: ["pending", "confirmed"] },
-        checkInDeadline: { $gte: now },
-      })
-        .sort({ startTime: 1 })
-        .lean())
-      ? "reserved"
-      : "available";
+  const occupiedReservation = reservations
+    .filter(
+      (reservation) =>
+        reservation.parkingSpaceId === parkingSpaceId &&
+        reservation.status === "checked-in" &&
+        !reservation.checkOutAt,
+    )
+    .sort((a, b) => b.startTime.localeCompare(a.startTime))[0];
 
-  await ParkingSpaceModel.findByIdAndUpdate(parkingSpaceId, {
-    $set: {
-      status: nextStatus,
-      lastStatusChangedAt: now,
-    },
+  const reservedReservation = reservations
+    .filter(
+      (reservation) =>
+        reservation.parkingSpaceId === parkingSpaceId &&
+        ["pending", "confirmed"].includes(reservation.status) &&
+        new Date(reservation.checkInDeadline).getTime() >= now,
+    )
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
+
+  const nextStatus = occupiedReservation ? "occupied" : reservedReservation ? "reserved" : "available";
+
+  await updateParkingSpace(parkingSpaceId, {
+    status: nextStatus,
+    lastStatusChangedAt: new Date().toISOString(),
   });
 }
 
@@ -73,48 +80,54 @@ export async function createReservation(input: {
   endTime: Date;
   note?: string;
 }) {
-  await connectToDatabase();
-
   const now = new Date();
   if (!isAfter(input.startTime, now)) {
     throw new AppError("Reservations cannot start in the past", 422);
   }
 
-  const activeReservationsCount = await ReservationModel.countDocuments({
-    userId: input.userId,
-    status: { $in: activeReservationStatuses },
-    $or: [{ endTime: { $gt: now } }, { checkOutAt: null, status: "checked-in" }],
-  });
+  const reservations = await listReservations();
+  const activeReservationsCount = reservations.filter((reservation) => {
+    if (reservation.userId !== input.userId || !activeReservationStatuses.includes(reservation.status)) {
+      return false;
+    }
+
+    if (reservation.status === "checked-in" && !reservation.checkOutAt) {
+      return true;
+    }
+
+    return new Date(reservation.endTime).getTime() > now.getTime();
+  }).length;
 
   if (activeReservationsCount >= RESERVATION_MAX_ACTIVE_PER_USER) {
     throw new AppError("Reservation limit reached for this user", 409);
   }
 
-  const lockUntil = addMilliseconds(now, RESERVATION_LOCK_MS);
-  const parkingSpace = await ParkingSpaceModel.findOneAndUpdate(
-    {
-      _id: input.parkingSpaceId,
-      $or: [{ reservationLockUntil: null }, { reservationLockUntil: { $lt: now } }],
-    },
-    { $set: { reservationLockUntil: lockUntil } },
-    { new: true },
-  );
-
-  if (!parkingSpace) {
+  const lockToken = await acquireParkingLock(input.parkingSpaceId, RESERVATION_LOCK_MS);
+  if (!lockToken) {
     throw new AppError("Parking space is busy, please retry", 409);
   }
 
   try {
+    const parkingSpace = await getParkingSpaceByIdRecord(input.parkingSpaceId);
+    if (!parkingSpace) {
+      throw new AppError("Parking space not found", 404);
+    }
+
+    await updateParkingSpace(input.parkingSpaceId, {
+      reservationLockUntil: addSeconds(now, Math.ceil(RESERVATION_LOCK_MS / 1000)).toISOString(),
+    });
+
     if (parkingSpace.status === "maintenance") {
       throw new AppError("Parking space is under maintenance", 409);
     }
 
-    const conflict = await ReservationModel.findOne({
-      parkingSpaceId: input.parkingSpaceId,
-      status: { $in: activeReservationStatuses },
-      startTime: { $lt: input.endTime },
-      endTime: { $gt: input.startTime },
-    }).lean();
+    const conflict = reservations.find(
+      (reservation) =>
+        reservation.parkingSpaceId === input.parkingSpaceId &&
+        activeReservationStatuses.includes(reservation.status) &&
+        new Date(reservation.startTime).getTime() < input.endTime.getTime() &&
+        new Date(reservation.endTime).getTime() > input.startTime.getTime(),
+    );
 
     if (conflict) {
       throw new AppError("Selected time conflicts with an existing reservation", 409);
@@ -127,29 +140,35 @@ export async function createReservation(input: {
       config: parkingFeeConfig,
     });
 
-    const reservation = await ReservationModel.create({
-      userId: new mongoose.Types.ObjectId(input.userId),
-      parkingSpaceId: new mongoose.Types.ObjectId(input.parkingSpaceId),
-      startTime: input.startTime,
-      endTime: input.endTime,
+    const reservation = await createReservationRecord({
+      userId: input.userId,
+      parkingSpaceId: input.parkingSpaceId,
+      startTime: input.startTime.toISOString(),
+      endTime: input.endTime.toISOString(),
       parkingFee: feeSummary.total,
       feeRatePerHour: feeSummary.ratePerHour,
       feeCurrency: feeSummary.currency,
-      checkInDeadline: addMinutes(input.startTime, CHECK_IN_GRACE_MINUTES),
+      checkInDeadline: addMinutes(input.startTime, CHECK_IN_GRACE_MINUTES).toISOString(),
       note: input.note ?? "",
       status: "confirmed",
+      checkInAt: null,
+      checkOutAt: null,
+      entryQrToken: null,
+      entryQrExpiresAt: null,
+      exitQrToken: null,
+      exitQrExpiresAt: null,
     });
 
     await syncParkingSpaceStatus(input.parkingSpaceId);
 
-    const user = await UserModel.findById(input.userId).lean();
+    const user = await getUserById(input.userId);
     const requestContext = await getRequestContext();
 
     await createAuditLog({
       actorUserId: input.userId,
       action: "reservation.create",
       targetType: "reservation",
-      targetId: String(reservation._id),
+      targetId: reservation._id,
       metadata: {
         parkingCode: parkingSpace.code,
         startTime: input.startTime.toISOString(),
@@ -172,7 +191,7 @@ export async function createReservation(input: {
         actorUserId: input.userId,
         action: "notification.line.reservation_created",
         targetType: "notification",
-        targetId: String(reservation._id),
+        targetId: reservation._id,
         metadata: lineResult,
         ...requestContext,
       });
@@ -180,14 +199,13 @@ export async function createReservation(input: {
 
     void sendDiscordEvent(
       "New Reservation",
-      `Reservation ${String(reservation._id)} created for ${parkingSpace.code} by ${user?.email ?? input.userId}.`,
+      `Reservation ${reservation._id} created for ${parkingSpace.code} by ${user?.email ?? input.userId}.`,
     );
 
-    return reservation;
+    return hydrateReservation(reservation);
   } finally {
-    await ParkingSpaceModel.findByIdAndUpdate(input.parkingSpaceId, {
-      $set: { reservationLockUntil: null },
-    });
+    await releaseParkingLock(input.parkingSpaceId);
+    await updateParkingSpace(input.parkingSpaceId, { reservationLockUntil: null });
   }
 }
 
@@ -197,17 +215,17 @@ export async function cancelReservation(input: {
   isAdmin?: boolean;
   note?: string;
 }) {
-  await connectToDatabase();
-
-  const reservation = await ReservationModel.findById(input.reservationId)
-    .populate("parkingSpaceId")
-    .populate("userId");
-
+  const reservation = await getReservationById(input.reservationId);
   if (!reservation) {
     throw new AppError("Reservation not found", 404);
   }
 
-  if (!input.isAdmin && String(reservation.userId._id) !== input.actorUserId) {
+  const [user, parkingSpace] = await Promise.all([
+    getUserById(reservation.userId),
+    getParkingSpaceByIdRecord(reservation.parkingSpaceId),
+  ]);
+
+  if (!input.isAdmin && reservation.userId !== input.actorUserId) {
     throw new AppError("Forbidden", 403);
   }
 
@@ -227,50 +245,45 @@ export async function cancelReservation(input: {
     );
   }
 
-  reservation.status = "cancelled";
-  if (input.note) {
-    reservation.note = input.note;
-  }
-  await reservation.save();
+  const updated = await updateReservation(reservation._id, {
+    status: "cancelled",
+    note: input.note ?? reservation.note,
+  });
 
-  await syncParkingSpaceStatus(String(reservation.parkingSpaceId._id));
+  if (!updated) {
+    throw new AppError("Reservation not found", 404);
+  }
+
+  await syncParkingSpaceStatus(reservation.parkingSpaceId);
 
   const requestContext = await getRequestContext();
   await createAuditLog({
     actorUserId: input.actorUserId,
     action: "reservation.cancel",
     targetType: "reservation",
-    targetId: String(reservation._id),
+    targetId: updated._id,
     metadata: { isAdmin: Boolean(input.isAdmin), note: input.note ?? "" },
     ...requestContext,
   });
 
-  const user = reservation.userId as unknown as { lineUserId?: string | null };
-  const parkingSpace = reservation.parkingSpaceId as unknown as { code: string };
-  const lineResult = await pushLineMessage(user.lineUserId, [
-    `Reservation cancelled / ยกเลิกการจอง: ${parkingSpace.code}`,
-    `Time: ${new Date(reservation.startTime).toLocaleString()} - ${new Date(reservation.endTime).toLocaleString()}`,
-    `Parking fee / ค่าจอดรถ: ${formatParkingFee(
-      Number((reservation as unknown as { parkingFee?: number }).parkingFee ?? 0),
-      String((reservation as unknown as { feeCurrency?: string }).feeCurrency ?? parkingFeeConfig.currency),
-    )}`,
+  const lineResult = await pushLineMessage(user?.lineUserId, [
+    `Reservation cancelled / ยกเลิกการจอง: ${parkingSpace?.code ?? "Unknown"}`,
+    `Time: ${new Date(updated.startTime).toLocaleString()} - ${new Date(updated.endTime).toLocaleString()}`,
+    `Parking fee / ค่าจอดรถ: ${formatParkingFee(updated.parkingFee, updated.feeCurrency ?? parkingFeeConfig.currency)}`,
   ]);
 
   await createAuditLog({
     actorUserId: input.actorUserId,
     action: "notification.line.reservation_cancelled",
     targetType: "notification",
-    targetId: String(reservation._id),
+    targetId: updated._id,
     metadata: lineResult,
     ...requestContext,
   });
 
-  void sendDiscordEvent(
-    "Reservation Cancelled",
-    `Reservation ${String(reservation._id)} for ${parkingSpace.code} was cancelled.`,
-  );
+  void sendDiscordEvent("Reservation Cancelled", `Reservation ${updated._id} for ${parkingSpace?.code ?? "Unknown"} was cancelled.`);
 
-  return reservation;
+  return hydrateReservation(updated);
 }
 
 export async function generateReservationQr(input: {
@@ -279,17 +292,12 @@ export async function generateReservationQr(input: {
   isAdmin?: boolean;
   mode: "entry" | "exit";
 }) {
-  await connectToDatabase();
-
-  const reservation = await ReservationModel.findById(input.reservationId)
-    .populate("parkingSpaceId")
-    .populate("userId");
-
+  const reservation = await getReservationById(input.reservationId);
   if (!reservation) {
     throw new AppError("Reservation not found", 404);
   }
 
-  if (!input.isAdmin && String(reservation.userId._id) !== input.actorUserId) {
+  if (!input.isAdmin && reservation.userId !== input.actorUserId) {
     throw new AppError("Forbidden", 403);
   }
 
@@ -302,21 +310,24 @@ export async function generateReservationQr(input: {
   }
 
   const token = buildQrToken();
-  const expiresAt = addSeconds(new Date(), QR_TOKEN_TTL_SECONDS);
+  const expiresAt = addSeconds(new Date(), QR_TOKEN_TTL_SECONDS).toISOString();
 
-  if (input.mode === "entry") {
-    reservation.entryQrToken = token;
-    reservation.entryQrExpiresAt = expiresAt;
-  } else {
-    reservation.exitQrToken = token;
-    reservation.exitQrExpiresAt = expiresAt;
+  const updated = await updateReservation(
+    reservation._id,
+    input.mode === "entry"
+      ? { entryQrToken: token, entryQrExpiresAt: expiresAt }
+      : { exitQrToken: token, exitQrExpiresAt: expiresAt },
+  );
+
+  if (!updated) {
+    throw new AppError("Reservation not found", 404);
   }
 
-  await reservation.save();
+  const parkingSpace = await getParkingSpaceByIdRecord(updated.parkingSpaceId);
 
   return {
-    reservationId: String(reservation._id),
-    parkingCode: (reservation.parkingSpaceId as { code?: string }).code ?? "Unknown",
+    reservationId: updated._id,
+    parkingCode: parkingSpace?.code ?? "Unknown",
     mode: input.mode,
     token,
     expiresAt,
@@ -329,30 +340,26 @@ export async function processReservationAccess(input: {
   mode: "entry" | "exit";
   token: string;
 }) {
-  await connectToDatabase();
-
+  const reservations = await listReservations();
   const tokenField = input.mode === "entry" ? "entryQrToken" : "exitQrToken";
   const expiryField = input.mode === "entry" ? "entryQrExpiresAt" : "exitQrExpiresAt";
-
-  const reservation = await ReservationModel.findOne({
-    [tokenField]: input.token,
-  })
-    .populate("parkingSpaceId")
-    .populate("userId");
+  const reservation = reservations.find((item) => item[tokenField] === input.token);
 
   if (!reservation) {
     throw new AppError("QR code is invalid or has already been rotated", 404);
   }
 
-  if (!input.isAdmin && String(reservation.userId._id) !== input.actorUserId) {
+  if (!input.isAdmin && reservation.userId !== input.actorUserId) {
     throw new AppError("Forbidden", 403);
   }
 
   const expiryValue = reservation[expiryField];
   const now = new Date();
-  if (!(expiryValue instanceof Date) || expiryValue.getTime() < now.getTime()) {
+  if (!expiryValue || new Date(expiryValue).getTime() < now.getTime()) {
     throw new AppError("QR code expired. Please generate a new one.", 409);
   }
+
+  let nextPatch: Parameters<typeof updateReservation>[1];
 
   if (input.mode === "entry") {
     if (reservation.status === "checked-in" || reservation.checkInAt) {
@@ -369,47 +376,57 @@ export async function processReservationAccess(input: {
     }
 
     if (now.getTime() > new Date(reservation.checkInDeadline).getTime()) {
-      reservation.status = "expired";
-      reservation.entryQrToken = null;
-      reservation.entryQrExpiresAt = null;
-      await reservation.save();
-      await syncParkingSpaceStatus(String(reservation.parkingSpaceId._id));
+      await updateReservation(reservation._id, {
+        status: "expired",
+        entryQrToken: null,
+        entryQrExpiresAt: null,
+      });
+      await syncParkingSpaceStatus(reservation.parkingSpaceId);
       throw new AppError("Check-in window has expired", 409);
     }
 
-    reservation.status = "checked-in";
-    reservation.checkInAt = now;
-    reservation.entryQrToken = null;
-    reservation.entryQrExpiresAt = null;
-    reservation.exitQrToken = null;
-    reservation.exitQrExpiresAt = null;
+    nextPatch = {
+      status: "checked-in",
+      checkInAt: now.toISOString(),
+      entryQrToken: null,
+      entryQrExpiresAt: null,
+      exitQrToken: null,
+      exitQrExpiresAt: null,
+    };
   } else {
     if (reservation.status !== "checked-in" || !reservation.checkInAt || reservation.checkOutAt) {
       throw new AppError("Reservation is not currently parked in the system", 409);
     }
 
-    reservation.status = "completed";
-    reservation.checkOutAt = now;
-    reservation.exitQrToken = null;
-    reservation.exitQrExpiresAt = null;
+    nextPatch = {
+      status: "completed",
+      checkOutAt: now.toISOString(),
+      exitQrToken: null,
+      exitQrExpiresAt: null,
+    };
   }
 
-  await reservation.save();
-  await syncParkingSpaceStatus(String(reservation.parkingSpaceId._id));
+  const updated = await updateReservation(reservation._id, nextPatch);
+  if (!updated) {
+    throw new AppError("Reservation not found", 404);
+  }
 
+  await syncParkingSpaceStatus(updated.parkingSpaceId);
+
+  const parkingSpace = await getParkingSpaceByIdRecord(updated.parkingSpaceId);
   const requestContext = await getRequestContext();
   await createAuditLog({
     actorUserId: input.actorUserId,
     action: input.mode === "entry" ? "reservation.check_in" : "reservation.check_out",
     targetType: "reservation",
-    targetId: String(reservation._id),
+    targetId: updated._id,
     metadata: {
-      parkingCode: (reservation.parkingSpaceId as { code?: string }).code ?? "Unknown",
+      parkingCode: parkingSpace?.code ?? "Unknown",
       mode: input.mode,
       at: now.toISOString(),
     },
     ...requestContext,
   });
 
-  return reservation;
+  return hydrateReservation(updated);
 }

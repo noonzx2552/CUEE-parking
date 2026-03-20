@@ -1,13 +1,13 @@
 # CUEE Parking
 
-Full-stack parking reservation platform built with Next.js App Router, TypeScript, Tailwind CSS, MongoDB, and Mongoose. The system supports user/admin roles, secure cookie-based sessions, reservation conflict checks, realtime-ish parking status refresh, LINE notifications, Discord event hooks, audit logging, and seed data for local development.
+Full-stack parking reservation platform built with Next.js App Router, TypeScript, Tailwind CSS, and Redis. The system supports user/admin roles, secure cookie-based sessions, reservation conflict checks, realtime-ish parking status refresh, LINE notifications, Discord event hooks, audit logging, and seed data for local development.
 
 ## Stack
 
 - Next.js 16 App Router
 - TypeScript
 - Tailwind CSS v4
-- MongoDB + Mongoose
+- Redis
 - Custom JWT session with `jose` and `httpOnly` cookie
 - Zod validation
 - `bcryptjs` password hashing
@@ -21,7 +21,7 @@ Create `.env.local` from `.env.example`.
 
 ```env
 PORT=3000
-MONGODB_URI=mongodb://127.0.0.1:27017/cuee-parking
+REDIS_URL=redis://default:<password>@<host>:<port>
 SESSION_SECRET=change-this-secret-to-at-least-32-characters
 LINE_CHANNEL_ACCESS_TOKEN=
 LINE_CHANNEL_ID=
@@ -61,7 +61,7 @@ App URL:
 
 ## Seed database
 
-Make sure MongoDB is running locally, then run:
+Make sure Redis is reachable, then run:
 
 ```bash
 npm run seed
@@ -135,7 +135,6 @@ src/
     security/
     services/
     validators/
-  models/
   types/
 middleware.ts
 scripts/seed.ts
@@ -147,7 +146,7 @@ Key pieces:
 - `src/lib/auth/session.ts`: secure JWT cookie session management.
 - `src/lib/security/*`: CSRF, rate limit, request metadata, and sanitization helpers.
 - `src/lib/services/reservations.ts`: reservation business rules, conflict checks, notifications, audit logging.
-- `src/models/*`: Mongoose models with indexes.
+- `src/lib/db/store.ts`: Redis-backed document store for users, spaces, reservations, audit logs, and SmartPark data.
 - `middleware.ts`: page route protection based on authentication and role.
 
 ## Security measures implemented

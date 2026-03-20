@@ -1,13 +1,14 @@
 import { requireAdminSession } from "@/lib/auth/session";
 import { withErrorHandler, jsonOk } from "@/lib/api";
-import { connectToDatabase } from "@/lib/db/mongoose";
-import { ParkingSpaceModel } from "@/models/ParkingSpace";
+import { createParkingSpace } from "@/lib/db/store";
 import { verifyCsrfToken } from "@/lib/security/csrf";
 import { parkingSpaceSchema } from "@/lib/validators/parking";
 import { createAuditLog } from "@/lib/services/audit-log";
 import { getRequestContext } from "@/lib/security/request";
 import { ACTION_RATE_LIMIT_MAX, ACTION_RATE_LIMIT_WINDOW_MS } from "@/lib/constants";
 import { assertRateLimit } from "@/lib/security/rate-limit";
+import { AppError } from "@/lib/errors";
+import { ensureParkingSpaceCodeAvailable } from "@/lib/data";
 
 export const POST = withErrorHandler(async (request) => {
   await verifyCsrfToken(request);
@@ -16,8 +17,11 @@ export const POST = withErrorHandler(async (request) => {
   assertRateLimit(`admin:parking:create:${admin.id}`, ACTION_RATE_LIMIT_MAX, ACTION_RATE_LIMIT_WINDOW_MS);
 
   const payload = parkingSpaceSchema.parse(await request.json());
-  await connectToDatabase();
-  const parkingSpace = await ParkingSpaceModel.create(payload);
+  if (!(await ensureParkingSpaceCodeAvailable(payload.code))) {
+    throw new AppError("Parking space code already exists", 409);
+  }
+
+  const parkingSpace = await createParkingSpace(payload);
 
   await createAuditLog({
     actorUserId: admin.id,

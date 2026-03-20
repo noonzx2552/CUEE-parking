@@ -1,11 +1,16 @@
 import { endOfDay, startOfDay } from "date-fns";
-import mongoose from "mongoose";
 
-import { connectToDatabase } from "@/lib/db/mongoose";
+import {
+  createParkingSpace,
+  findParkingSpaceByCode,
+  getParkingSpaceByIdRecord,
+  hydrateReservation,
+  listParkingSpaces,
+  listReservations,
+  listUsers,
+  updateParkingSpace,
+} from "@/lib/db/store";
 import { reconcileReservationStatuses } from "@/lib/services/reconciliation";
-import { ParkingSpaceModel } from "@/models/ParkingSpace";
-import { ReservationModel } from "@/models/Reservation";
-import { UserModel } from "@/models/User";
 
 let defaultParkingBootstrapPromise: Promise<void> | null = null;
 
@@ -13,8 +18,8 @@ function getDefaultParkingSpaces() {
   return Array.from({ length: 4 }, (_, index) => ({
     code: `A${String(index + 1).padStart(2, "0")}`,
     zone: "A",
-    type: index < 2 ? "ev" : "normal",
-    status: "available",
+    type: index < 2 ? ("ev" as const) : ("normal" as const),
+    status: "available" as const,
     description: "Main building parking",
   }));
 }
@@ -22,12 +27,14 @@ function getDefaultParkingSpaces() {
 async function ensureDefaultParkingSpaces() {
   if (!defaultParkingBootstrapPromise) {
     defaultParkingBootstrapPromise = (async () => {
-      const count = await ParkingSpaceModel.countDocuments();
-      if (count > 0) {
+      const spaces = await listParkingSpaces();
+      if (spaces.length > 0) {
         return;
       }
 
-      await ParkingSpaceModel.insertMany(getDefaultParkingSpaces(), { ordered: false });
+      for (const input of getDefaultParkingSpaces()) {
+        await createParkingSpace(input);
+      }
     })().catch((error) => {
       defaultParkingBootstrapPromise = null;
       throw error;
@@ -43,79 +50,59 @@ export async function getParkingSpaces(filters?: {
   status?: string;
   search?: string;
 }) {
-  await connectToDatabase();
   await ensureDefaultParkingSpaces();
   await reconcileReservationStatuses();
 
-  const query: Record<string, unknown> = {};
-  if (filters?.zone) query.zone = filters.zone;
-  if (filters?.type) query.type = filters.type;
-  if (filters?.status) query.status = filters.status;
-  if (filters?.search) query.code = { $regex: filters.search, $options: "i" };
+  let spaces = await listParkingSpaces();
 
-  return ParkingSpaceModel.find(query).sort({ zone: 1, code: 1 }).lean();
+  if (filters?.zone) spaces = spaces.filter((space) => space.zone === filters.zone);
+  if (filters?.type) spaces = spaces.filter((space) => space.type === filters.type);
+  if (filters?.status) spaces = spaces.filter((space) => space.status === filters.status);
+  if (filters?.search) {
+    const query = filters.search.toLowerCase();
+    spaces = spaces.filter((space) => space.code.toLowerCase().includes(query));
+  }
+
+  return spaces;
 }
 
 export async function getParkingSpaceById(id: string) {
-  await connectToDatabase();
   await ensureDefaultParkingSpaces();
   await reconcileReservationStatuses();
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return null;
-  }
-  return ParkingSpaceModel.findById(id).lean();
+  return getParkingSpaceByIdRecord(id);
 }
 
 export async function getUserReservations(userId: string) {
-  await connectToDatabase();
   await reconcileReservationStatuses();
-  return ReservationModel.find({ userId })
-    .populate("parkingSpaceId")
-    .sort({ startTime: -1 })
-    .lean();
+  const reservations = (await listReservations())
+    .filter((reservation) => reservation.userId === userId)
+    .sort((a, b) => b.startTime.localeCompare(a.startTime));
+
+  return Promise.all(reservations.map((reservation) => hydrateReservation(reservation, { includeUser: false })));
 }
 
 export async function getAdminReservations() {
-  await connectToDatabase();
   await reconcileReservationStatuses();
-  return ReservationModel.find({})
-    .populate("parkingSpaceId")
-    .populate("userId")
-    .sort({ createdAt: -1 })
-    .lean();
+  const reservations = await listReservations();
+  return Promise.all(reservations.map((reservation) => hydrateReservation(reservation)));
 }
 
 export async function getAdminUsers() {
-  await connectToDatabase();
-  return UserModel.find({}, { passwordHash: 0 }).sort({ createdAt: -1 }).lean();
+  return (await listUsers()).map(({ passwordHash, ...user }) => user);
 }
 
 export async function getAdminStats() {
-  await connectToDatabase();
   await ensureDefaultParkingSpaces();
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
+  await reconcileReservationStatuses();
 
-  const [spaceCounts, totalSpaces, todayReservations, zoneUsage, usersCount] = await Promise.all([
-    ParkingSpaceModel.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
-    ParkingSpaceModel.countDocuments(),
-    ReservationModel.countDocuments({ createdAt: { $gte: todayStart, $lte: todayEnd } }),
-    ParkingSpaceModel.aggregate([
-      {
-        $group: {
-          _id: "$zone",
-          total: { $sum: 1 },
-          reserved: {
-            $sum: {
-              $cond: [{ $in: ["$status", ["reserved", "occupied"]] }, 1, 0],
-            },
-          },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]),
-    UserModel.countDocuments(),
+  const now = new Date();
+  const todayStart = startOfDay(now).getTime();
+  const todayEnd = endOfDay(now).getTime();
+
+  const [spaces, reservations, users] = await Promise.all([
+    listParkingSpaces(),
+    listReservations(),
+    listUsers(),
   ]);
 
   const byStatus = {
@@ -125,21 +112,41 @@ export async function getAdminStats() {
     maintenance: 0,
   };
 
-  for (const item of spaceCounts) {
-    if (item._id in byStatus) {
-      byStatus[item._id as keyof typeof byStatus] = item.count;
+  const zoneUsageMap = new Map<string, { zone: string; total: number; reserved: number }>();
+
+  for (const space of spaces) {
+    byStatus[space.status] += 1;
+
+    const zoneUsage = zoneUsageMap.get(space.zone) ?? { zone: space.zone, total: 0, reserved: 0 };
+    zoneUsage.total += 1;
+    if (space.status === "reserved" || space.status === "occupied") {
+      zoneUsage.reserved += 1;
     }
+    zoneUsageMap.set(space.zone, zoneUsage);
   }
 
+  const todayReservations = reservations.filter((reservation) => {
+    const createdAt = new Date(reservation.createdAt).getTime();
+    return createdAt >= todayStart && createdAt <= todayEnd;
+  }).length;
+
   return {
-    totalSpaces,
+    totalSpaces: spaces.length,
     byStatus,
     todayReservations,
-    usersCount,
-    zoneUsage: zoneUsage.map((item) => ({
-      zone: item._id,
-      total: item.total,
-      reserved: item.reserved,
-    })),
+    usersCount: users.length,
+    zoneUsage: Array.from(zoneUsageMap.values()).sort((a, b) => a.zone.localeCompare(b.zone)),
   };
+}
+
+export async function ensureParkingSpaceCodeAvailable(code: string, ignoreId?: string) {
+  const existing = await findParkingSpaceByCode(code);
+  return !existing || existing._id === ignoreId;
+}
+
+export async function touchParkingSpaceStatus(id: string, status: "available" | "reserved" | "occupied" | "maintenance") {
+  return updateParkingSpace(id, {
+    status,
+    lastStatusChangedAt: new Date().toISOString(),
+  });
 }

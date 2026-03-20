@@ -3,7 +3,7 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.string().default("3000"),
-  MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
+  REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
   LINE_CHANNEL_ACCESS_TOKEN: z.string().optional().default(""),
   LINE_CHANNEL_ID: z.string().optional().default(""),
@@ -15,6 +15,8 @@ const envSchema = z.object({
   LINE_ADD_FRIEND_URL: z.string().url().optional().or(z.literal("")).default(""),
   DISCORD_WEBHOOK_URL: z.string().url().optional().or(z.literal("")).default(""),
   APP_NAME: z.string().default("CUEE Parking"),
+  APP_BASE_URL: z.string().url().optional().or(z.literal("")).default(""),
+  APP_TIMEZONE: z.string().default("Asia/Bangkok"),
   SMARTPARK_SLOTS: z.string().default("A1,A2,A3,A4"),
   DEFAULT_PARKING_DURATION_MINUTES: z.coerce.number().int().positive().default(35),
   DEFAULT_WARNING_MINUTES: z.coerce.number().int().nonnegative().default(20),

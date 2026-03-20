@@ -1,27 +1,30 @@
-import mongoose from "mongoose";
-
 import { requireAdminSession } from "@/lib/auth/session";
 import { withErrorHandler, jsonOk } from "@/lib/api";
 import { AppError } from "@/lib/errors";
-import { connectToDatabase } from "@/lib/db/mongoose";
-import { ParkingSpaceModel } from "@/models/ParkingSpace";
+import { deleteParkingSpace, getParkingSpaceByIdRecord, updateParkingSpace } from "@/lib/db/store";
 import { verifyCsrfToken } from "@/lib/security/csrf";
 import { parkingSpaceSchema } from "@/lib/validators/parking";
 import { createAuditLog } from "@/lib/services/audit-log";
 import { getRequestContext } from "@/lib/security/request";
+import { ensureParkingSpaceCodeAvailable } from "@/lib/data";
 
 export const PATCH = withErrorHandler(async (request, context) => {
   await verifyCsrfToken(request);
   const admin = await requireAdminSession();
   const payload = parkingSpaceSchema.partial().parse(await request.json());
   const params = await context?.params;
+  const parkingSpaceId = params?.id ?? "";
 
-  if (!mongoose.Types.ObjectId.isValid(params?.id ?? "")) {
+  const current = await getParkingSpaceByIdRecord(parkingSpaceId);
+  if (!current) {
     throw new AppError("Parking space not found", 404);
   }
 
-  await connectToDatabase();
-  const parkingSpace = await ParkingSpaceModel.findByIdAndUpdate(params?.id, payload, { new: true });
+  if (payload.code && !(await ensureParkingSpaceCodeAvailable(payload.code, parkingSpaceId))) {
+    throw new AppError("Parking space code already exists", 409);
+  }
+
+  const parkingSpace = await updateParkingSpace(parkingSpaceId, payload);
   if (!parkingSpace) {
     throw new AppError("Parking space not found", 404);
   }
@@ -43,12 +46,7 @@ export const DELETE = withErrorHandler(async (request, context) => {
   const admin = await requireAdminSession();
   const params = await context?.params;
 
-  if (!mongoose.Types.ObjectId.isValid(params?.id ?? "")) {
-    throw new AppError("Parking space not found", 404);
-  }
-
-  await connectToDatabase();
-  const parkingSpace = await ParkingSpaceModel.findByIdAndDelete(params?.id);
+  const parkingSpace = await deleteParkingSpace(params?.id ?? "");
   if (!parkingSpace) {
     throw new AppError("Parking space not found", 404);
   }

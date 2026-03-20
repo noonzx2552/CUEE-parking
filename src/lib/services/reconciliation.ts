@@ -1,58 +1,54 @@
-import { connectToDatabase } from "@/lib/db/mongoose";
-import { ParkingSpaceModel } from "@/models/ParkingSpace";
-import { ReservationModel } from "@/models/Reservation";
+import { listParkingSpaces, listReservations, updateParkingSpace, updateReservation } from "@/lib/db/store";
 
 export async function reconcileReservationStatuses() {
-  await connectToDatabase();
-  const now = new Date();
+  const now = Date.now();
+  const reservations = await listReservations();
 
-  await ReservationModel.updateMany(
-    {
-      status: { $in: ["pending", "confirmed"] },
-      checkInDeadline: { $lt: now },
-      checkInAt: null,
-    },
-    { $set: { status: "expired" } },
-  );
+  for (const reservation of reservations) {
+    if (
+      ["pending", "confirmed"].includes(reservation.status) &&
+      !reservation.checkInAt &&
+      new Date(reservation.checkInDeadline).getTime() < now
+    ) {
+      await updateReservation(reservation._id, { status: "expired" });
+      continue;
+    }
 
-  await ReservationModel.updateMany(
-    {
-      status: { $in: ["pending", "confirmed"] },
-      endTime: { $lt: now },
-    },
-    { $set: { status: "expired" } },
-  );
+    if (
+      ["pending", "confirmed"].includes(reservation.status) &&
+      new Date(reservation.endTime).getTime() < now
+    ) {
+      await updateReservation(reservation._id, { status: "expired" });
+    }
+  }
 
-  const reservedSpaceIds = await ReservationModel.distinct("parkingSpaceId", {
-    status: { $in: ["pending", "confirmed"] },
-    checkInDeadline: { $gte: now },
-  });
+  const [spaces, nextReservations] = await Promise.all([listParkingSpaces(), listReservations()]);
 
-  const occupiedSpaceIds = await ReservationModel.distinct("parkingSpaceId", {
-    status: "checked-in",
-    checkOutAt: null,
-  });
-  const occupiedSpaceIdSet = new Set(occupiedSpaceIds.map((id) => String(id)));
-  const reservedOnlySpaceIds = reservedSpaceIds.filter((id) => !occupiedSpaceIdSet.has(String(id)));
+  for (const space of spaces) {
+    if (space.status === "maintenance") {
+      continue;
+    }
 
-  await ParkingSpaceModel.updateMany(
-    {
-      _id: { $nin: [...reservedSpaceIds, ...occupiedSpaceIds] },
-      status: { $ne: "maintenance" },
-    },
-    { $set: { status: "available", lastStatusChangedAt: now } },
-  );
+    const occupied = nextReservations.some(
+      (reservation) =>
+        reservation.parkingSpaceId === space._id &&
+        reservation.status === "checked-in" &&
+        !reservation.checkOutAt,
+    );
 
-  await ParkingSpaceModel.updateMany(
-    {
-      _id: { $in: reservedOnlySpaceIds },
-      status: { $ne: "maintenance" },
-    },
-    { $set: { status: "reserved", lastStatusChangedAt: now } },
-  );
+    const reserved = nextReservations.some(
+      (reservation) =>
+        reservation.parkingSpaceId === space._id &&
+        ["pending", "confirmed"].includes(reservation.status) &&
+        new Date(reservation.checkInDeadline).getTime() >= now,
+    );
 
-  await ParkingSpaceModel.updateMany(
-    { _id: { $in: occupiedSpaceIds }, status: { $ne: "maintenance" } },
-    { $set: { status: "occupied", lastStatusChangedAt: now } },
-  );
+    const nextStatus = occupied ? "occupied" : reserved ? "reserved" : "available";
+    if (space.status !== nextStatus) {
+      await updateParkingSpace(space._id, {
+        status: nextStatus,
+        lastStatusChangedAt: new Date().toISOString(),
+      });
+    }
+  }
 }

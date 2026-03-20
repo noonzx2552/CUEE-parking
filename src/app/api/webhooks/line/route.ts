@@ -2,9 +2,8 @@ import crypto from "node:crypto";
 
 import { withErrorHandler, jsonOk } from "@/lib/api";
 import { env } from "@/lib/env";
-import { connectToDatabase } from "@/lib/db/mongoose";
+import { findUserByEmail, findUserByLineBindToken, updateUser } from "@/lib/db/store";
 import { replyLineMessage } from "@/lib/services/line";
-import { UserModel } from "@/models/User";
 
 function verifySignature(rawBody: string, signature: string | null) {
   if (!env.LINE_CHANNEL_SECRET || !signature) {
@@ -32,8 +31,6 @@ export const POST = withErrorHandler(async (request) => {
     }>;
   };
 
-  await connectToDatabase();
-
   for (const event of body.events ?? []) {
     if (event.type !== "message") continue;
 
@@ -42,7 +39,7 @@ export const POST = withErrorHandler(async (request) => {
     const sourceUserId = event.source?.userId;
     const replyToken = event.replyToken;
 
-    if (!sourceUserId || !normalized.startsWith("bind ")) {
+    if (!sourceUserId || !replyToken || !normalized.startsWith("bind ")) {
       continue;
     }
 
@@ -50,39 +47,25 @@ export const POST = withErrorHandler(async (request) => {
     if (!bindValue) continue;
 
     const now = new Date();
-
-    const tokenBoundUser = await UserModel.findOneAndUpdate(
-      {
-        lineBindToken: bindValue,
-        lineBindExpiresAt: { $gt: now },
-      },
-      {
-        $set: {
-          lineUserId: sourceUserId,
-        },
-        $unset: {
-          lineBindToken: 1,
-          lineBindExpiresAt: 1,
-        },
-      },
-      { new: true },
-    );
+    const tokenBoundUser = await findUserByLineBindToken(bindValue, now);
 
     if (tokenBoundUser) {
+      await updateUser(tokenBoundUser._id, {
+        lineUserId: sourceUserId,
+        lineBindToken: null,
+        lineBindExpiresAt: null,
+      });
       await replyLineMessage(replyToken, ["เชื่อมต่อ LINE กับระบบสำเร็จแล้ว"]);
       continue;
     }
 
-    const email = bindValue.toLowerCase();
-    const emailBoundUser = await UserModel.findOneAndUpdate(
-      { email },
-      {
-        $set: { lineUserId: sourceUserId },
-        $unset: { lineBindToken: 1, lineBindExpiresAt: 1 },
-      },
-    );
-
+    const emailBoundUser = await findUserByEmail(bindValue.toLowerCase());
     if (emailBoundUser) {
+      await updateUser(emailBoundUser._id, {
+        lineUserId: sourceUserId,
+        lineBindToken: null,
+        lineBindExpiresAt: null,
+      });
       await replyLineMessage(replyToken, ["เชื่อมต่อ LINE กับระบบสำเร็จแล้ว"]);
       continue;
     }

@@ -1,5 +1,4 @@
-import { connectToDatabase } from "@/lib/db/mongoose";
-import { AuditLogModel } from "@/models/AuditLog";
+import { createAuditLogRecord } from "@/lib/db/store";
 import type { AuditTargetType } from "@/types";
 
 type AuditLogInput = {
@@ -13,9 +12,7 @@ type AuditLogInput = {
 };
 
 export async function createAuditLog(input: AuditLogInput) {
-  await connectToDatabase();
-
-  await AuditLogModel.create({
+  await createAuditLogRecord({
     actorUserId: input.actorUserId ?? null,
     action: input.action,
     targetType: input.targetType,

@@ -1,7 +1,6 @@
 import { requireSession } from "@/lib/auth/session";
 import { withErrorHandler, jsonOk } from "@/lib/api";
-import { connectToDatabase } from "@/lib/db/mongoose";
-import { UserModel } from "@/models/User";
+import { updateUser } from "@/lib/db/store";
 import { verifyCsrfToken } from "@/lib/security/csrf";
 import { profileSchema } from "@/lib/validators/auth";
 import { createAuditLog } from "@/lib/services/audit-log";
@@ -12,17 +11,13 @@ export const PATCH = withErrorHandler(async (request) => {
   const session = await requireSession();
   const payload = profileSchema.parse(await request.json());
 
-  await connectToDatabase();
-  const user = await UserModel.findByIdAndUpdate(
+  const user = await updateUser(
     session.id,
     {
-      $set: {
-        name: payload.name,
-        lineUserId: payload.lineUserId || null,
-        ...(payload.lineUserId ? {} : { lineBindToken: null, lineBindExpiresAt: null }),
-      },
+      name: payload.name,
+      lineUserId: payload.lineUserId || null,
+      ...(payload.lineUserId ? {} : { lineBindToken: null, lineBindExpiresAt: null }),
     },
-    { new: true, projection: { passwordHash: 0 } },
   );
 
   await createAuditLog({

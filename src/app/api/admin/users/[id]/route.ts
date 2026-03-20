@@ -1,8 +1,7 @@
 import { requireAdminSession } from "@/lib/auth/session";
 import { withErrorHandler, jsonOk } from "@/lib/api";
-import { connectToDatabase } from "@/lib/db/mongoose";
 import { AppError } from "@/lib/errors";
-import { UserModel } from "@/models/User";
+import { getUserById, updateUser } from "@/lib/db/store";
 import { adminUserUpdateSchema } from "@/lib/validators/admin";
 import { verifyCsrfToken } from "@/lib/security/csrf";
 import { createAuditLog } from "@/lib/services/audit-log";
@@ -13,16 +12,18 @@ export const PATCH = withErrorHandler(async (request, context) => {
   const admin = await requireAdminSession();
   const payload = adminUserUpdateSchema.parse(await request.json());
   const params = await context?.params;
+  const userId = params?.id ?? "";
 
-  await connectToDatabase();
-  const user = await UserModel.findByIdAndUpdate(params?.id, payload, {
-    new: true,
-    projection: { passwordHash: 0 },
-  });
+  if (!(await getUserById(userId))) {
+    throw new AppError("User not found", 404);
+  }
 
+  const user = await updateUser(userId, payload);
   if (!user) {
     throw new AppError("User not found", 404);
   }
+
+  const { passwordHash: _passwordHash, ...safeUser } = user;
 
   await createAuditLog({
     actorUserId: admin.id,
@@ -33,5 +34,5 @@ export const PATCH = withErrorHandler(async (request, context) => {
     ...(await getRequestContext()),
   });
 
-  return jsonOk({ user });
+  return jsonOk({ user: safeUser });
 });

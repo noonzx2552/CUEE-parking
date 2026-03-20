@@ -3,9 +3,8 @@ import { SignJWT, jwtVerify } from "jose";
 
 import { AppError } from "@/lib/errors";
 import { env, isProduction } from "@/lib/env";
-import { connectToDatabase } from "@/lib/db/mongoose";
 import { SESSION_COOKIE_NAME } from "@/lib/constants";
-import { UserModel } from "@/models/User";
+import { getUserById } from "@/lib/db/store";
 import type { SessionUser } from "@/types";
 
 const secret = new TextEncoder().encode(env.SESSION_SECRET);
@@ -84,8 +83,7 @@ export async function getCurrentUser() {
     return null;
   }
 
-  await connectToDatabase();
-  const user = await UserModel.findById(session.id).lean();
+  const user = await getUserById(session.id);
 
   if (!user || !user.isActive) {
     return null;

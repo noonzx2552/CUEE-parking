@@ -4,46 +4,39 @@ import { headers } from "next/headers";
 
 import { AppError } from "@/lib/errors";
 import { env } from "@/lib/env";
-import { connectToDatabase } from "@/lib/db/mongoose";
-import { SmartParkSessionModel } from "@/models/SmartParkSession";
-import { SmartParkSlotModel } from "@/models/SmartParkSlot";
+import {
+  createSmartParkSessionRecord,
+  getSmartParkSlotRecord,
+  listSmartParkSessions,
+  listSmartParkSlots,
+  saveSmartParkSlot,
+  updateSmartParkSession,
+} from "@/lib/db/store";
 
 export const SMARTPARK_SLOT_NAMES = env.SMARTPARK_SLOTS.split(",")
   .map((slot) => slot.trim())
   .filter(Boolean);
 
 export async function ensureSmartParkSlots() {
-  await connectToDatabase();
-
-  const existing = await SmartParkSlotModel.find(
-    { slotName: { $in: SMARTPARK_SLOT_NAMES } },
-    { slotName: 1 },
-  ).lean();
+  const existing = await listSmartParkSlots();
   const existingNames = new Set(existing.map((item) => item.slotName));
 
-  const missing = SMARTPARK_SLOT_NAMES.filter((slot) => !existingNames.has(slot));
-  if (missing.length === 0) {
-    return;
+  for (const slotName of SMARTPARK_SLOT_NAMES) {
+    if (!existingNames.has(slotName)) {
+      await saveSmartParkSlot({
+        slotName,
+        status: "vacant",
+        updatedBy: "system",
+        updatedAt: new Date().toISOString(),
+      });
+    }
   }
-
-  await SmartParkSlotModel.insertMany(
-    missing.map((slotName) => ({
-      slotName,
-      status: "vacant" as const,
-      updatedBy: "system",
-    })),
-    { ordered: false },
-  ).catch(() => undefined);
 }
 
 export async function getSmartParkSlots() {
   await ensureSmartParkSlots();
 
-  const slots = await SmartParkSlotModel.find({}, { slotName: 1, status: 1 })
-    .sort({ slotName: 1 })
-    .lean();
-
-  return slots.map((slot) => ({
+  return (await listSmartParkSlots()).map((slot) => ({
     slot_name: slot.slotName,
     status: slot.status,
   }));
@@ -51,26 +44,29 @@ export async function getSmartParkSlots() {
 
 export async function getSmartParkSlot(slotName: string) {
   await ensureSmartParkSlots();
-  return SmartParkSlotModel.findOne({ slotName }).lean();
+  return getSmartParkSlotRecord(slotName);
 }
 
 export async function setSmartParkSlotStatus(slotName: string, status: "vacant" | "occupied", source: string) {
   await ensureSmartParkSlots();
 
-  return SmartParkSlotModel.findOneAndUpdate(
-    { slotName },
-    { $set: { slotName, status, updatedBy: source } },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  ).lean();
+  return saveSmartParkSlot({
+    slotName,
+    status,
+    updatedBy: source,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export async function endActiveSessions(slotName: string) {
-  await connectToDatabase();
-  const endedAt = new Date();
-  await SmartParkSessionModel.updateMany(
-    { slotName, ended: false },
-    { $set: { ended: true, endedAt } },
-  );
+  const endedAt = new Date().toISOString();
+  const sessions = await listSmartParkSessions();
+
+  for (const session of sessions) {
+    if (session.slotName === slotName && !session.ended) {
+      await updateSmartParkSession(session._id, { ended: true, endedAt });
+    }
+  }
 }
 
 export async function createSmartParkSession(
@@ -80,29 +76,28 @@ export async function createSmartParkSession(
   warnMinutes = env.DEFAULT_WARNING_MINUTES,
   source = "system",
 ) {
-  await connectToDatabase();
-
-  return SmartParkSessionModel.create({
+  return createSmartParkSessionRecord({
     slotName,
     lineUserId,
-    startTime: new Date(),
+    startTime: new Date().toISOString(),
     durationMinutes,
     warnMinutes,
     ended: false,
+    endedAt: null,
     source,
   });
 }
 
 export async function attachLineUserToLatestSession(slotName: string, lineUserId: string) {
-  await connectToDatabase();
+  const sessions = await listSmartParkSessions();
+  const session = sessions.find((item) => item.slotName === slotName && !item.ended);
 
-  const session = await SmartParkSessionModel.findOneAndUpdate(
-    { slotName, ended: false },
-    { $set: { lineUserId } },
-    { sort: { createdAt: -1 }, new: true },
-  ).lean();
+  if (!session) {
+    return false;
+  }
 
-  return Boolean(session);
+  await updateSmartParkSession(session._id, { lineUserId });
+  return true;
 }
 
 export async function validateSmartParkDeviceRequest(request: Request, rawBody: string) {
