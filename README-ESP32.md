@@ -100,8 +100,8 @@ x-signature: HMAC-SHA256(<timestamp>.<raw JSON body>, key=DEVICE_API_KEY)
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 const char* API_URL       = "https://spotsync-cuee.vercel.app/api/update";
-const char* DEVICE_API_KEY = "YOUR_DEVICE_API_KEY";   // ขอจากเจ้าของโปรเจกต์
-const char* SLOT_NAME     = "A1";                      // เปลี่ยนตามตำแหน่งติดตั้ง
+const char* DEVICE_API_KEY = "Yks4Ra6InH9Xuq5UYA3M";
+const char* SLOT_NAME     = "A1";  // เปลี่ยนตามตำแหน่งติดตั้ง: A1 / A2 / A3 / A4
 
 // ====== PIN เซ็นเซอร์ ======
 const int TRIG_PIN = 5;
@@ -194,7 +194,7 @@ void sendUpdate(const String& status) {
 const char* WIFI_SSID      = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
 const char* API_URL        = "https://spotsync-cuee.vercel.app/api/update";
-const char* DEVICE_API_KEY = "YOUR_DEVICE_API_KEY";
+const char* DEVICE_API_KEY = "Yks4Ra6InH9Xuq5UYA3M";
 const char* SLOT_NAME      = "A1";
 
 String hmacSHA256(const String& key, const String& data) {
@@ -386,6 +386,95 @@ void closeGate() {
 ```
 
 > **หมายเหตุ:** ถ้าใช้ Servo motor ให้แทน `digitalWrite` ด้วย `myServo.write(90)` / `myServo.write(0)` ตามมุมที่ต้องการ
+
+---
+
+### โค้ด ESP32 ควบคุมหลายไม้กั้นพร้อมกัน (1 ESP32 หลาย slot)
+
+ใช้กรณีที่ ESP32 ตัวเดียวต่อ relay/servo หลายตัว เช็ค API ครั้งเดียวได้ทุก slot
+
+```cpp
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const char* WIFI_SSID      = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
+const char* DEVICE_API_KEY = "Yks4Ra6InH9Xuq5UYA3M";
+const char* BASE_URL       = "https://spotsync-cuee.vercel.app/api/gate/status";
+
+// ====== ตั้งค่า slot และ pin ======
+const int NUM_GATES = 4;
+
+const char* SLOTS[NUM_GATES]    = { "A1",  "A2",  "A3",  "A4"  };
+const int   GATE_PINS[NUM_GATES] = {  13,    14,    27,    26   };  // relay/servo pin ต่อ slot
+
+bool gateState[NUM_GATES] = { false, false, false, false };
+
+void setup() {
+  Serial.begin(115200);
+  for (int i = 0; i < NUM_GATES; i++) {
+    pinMode(GATE_PINS[i], OUTPUT);
+    digitalWrite(GATE_PINS[i], LOW);
+  }
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  Serial.println("\nWiFi connected");
+}
+
+void loop() {
+  checkAllGates();
+  delay(1000);  // poll ทุก 1 วินาที
+}
+
+void checkAllGates() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  // สร้าง URL: ?slot=A1,A2,A3,A4&api_key=...
+  String url = String(BASE_URL) + "?slot=A1,A2,A3,A4&api_key=" + DEVICE_API_KEY;
+
+  HTTPClient http;
+  http.begin(url);
+  http.setTimeout(4000);
+
+  int httpCode = http.GET();
+  if (httpCode != 200) {
+    Serial.printf("Gate API error: %d\n", httpCode);
+    http.end();
+    return;
+  }
+
+  // Parse JSON: { "gates": [ { "slot":"A1", "open":true }, ... ] }
+  StaticJsonDocument<512> doc;
+  DeserializationError err = deserializeJson(doc, http.getString());
+  http.end();
+  if (err) { Serial.println("JSON parse error"); return; }
+
+  JsonArray gates = doc["gates"].as<JsonArray>();
+  for (JsonObject gate : gates) {
+    const char* slotName = gate["slot"];
+    bool shouldOpen = gate["open"] | false;
+
+    // หา index ของ slot นี้
+    for (int i = 0; i < NUM_GATES; i++) {
+      if (strcmp(slotName, SLOTS[i]) == 0) {
+        if (shouldOpen && !gateState[i]) {
+          Serial.printf("Gate %s OPEN\n", slotName);
+          digitalWrite(GATE_PINS[i], HIGH);
+          gateState[i] = true;
+        } else if (!shouldOpen && gateState[i]) {
+          Serial.printf("Gate %s CLOSE\n", slotName);
+          digitalWrite(GATE_PINS[i], LOW);
+          gateState[i] = false;
+        }
+        break;
+      }
+    }
+  }
+}
+```
 
 ---
 
