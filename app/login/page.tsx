@@ -68,22 +68,17 @@ export default function CheckinPage() {
     setState('loading')
     setErrorMsg('')
     try {
-      if (!liffId) {
-        setErrorMsg('ยังไม่ได้ตั้งค่า LIFF ID กรุณาติดต่อผู้ดูแลระบบ')
+      const res = await fetch('/api/app-config')
+      const cfg = await res.json()
+      const clientId = cfg.LINE_CLIENT_ID
+      if (!clientId) {
+        setErrorMsg('ยังไม่ได้ตั้งค่า LINE Client ID กรุณาติดต่อผู้ดูแลระบบ')
         setState('error')
         return
       }
-      // Init LIFF if not ready
-      if (!liffReady.current) {
-        await window.liff.init({ liffId })
-        liffReady.current = true
-      }
-      if (window.liff.isLoggedIn()) {
-        await handleLiffProfile()
-        return
-      }
-      // เปิด LINE app โดยตรง (redirectUri กลับมาหน้าเดิม)
-      window.liff.login({ redirectUri: window.location.href })
+      const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/line')
+      const stateParam = encodeURIComponent(window.location.href)
+      window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${stateParam}&scope=profile%20openid`
     } catch {
       setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE')
       setState('error')

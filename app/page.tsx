@@ -67,7 +67,12 @@ export default function Home() {
     const lineParam = params.get('line')
     const nameParam = params.get('name')
     if (lineParam === 'ok' && nameParam) {
-      const storedId = localStorage.getItem('sp_user_id') || ''
+      const uidParam = params.get('uid') || ''
+      if (uidParam) {
+        localStorage.setItem('sp_user_id', uidParam)
+        localStorage.setItem('sp_user_name', nameParam)
+      }
+      const storedId = uidParam || localStorage.getItem('sp_user_id') || ''
       setLineConnected(true)
       setLineName(nameParam)
       if (storedId) setLineUserId(storedId)

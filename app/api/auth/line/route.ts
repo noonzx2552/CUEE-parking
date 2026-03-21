@@ -7,16 +7,26 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code') || ''
   const error = searchParams.get('error') || ''
+  const stateParam = searchParams.get('state') || ''
 
   const base = process.env.NEXTAUTH_URL || new URL(req.url).origin
 
-  if (error || !code) return NextResponse.redirect(`${base}/?line=cancel`)
+  // ถ้า state เป็น URL ของ login page ให้ redirect กลับไปที่ home แทน
+  let afterLoginUrl = `${base}/`
+  try {
+    const stateUrl = new URL(decodeURIComponent(stateParam))
+    if (stateUrl.origin === base) {
+      afterLoginUrl = `${base}/`
+    }
+  } catch { /* ignore */ }
+
+  if (error || !code) return NextResponse.redirect(`${afterLoginUrl}?line=cancel`)
 
   const clientId = process.env.LINE_LOGIN_CLIENT_ID || ''
   const clientSecret = process.env.LINE_LOGIN_CLIENT_SECRET || ''
-  const redirectUri = process.env.LINE_REDIRECT_URI || `${base}/api/auth/line`
+  const redirectUri = `${base}/api/auth/line`
 
-  if (!clientId || !clientSecret) return NextResponse.redirect(`${base}/?line=error`)
+  if (!clientId || !clientSecret) return NextResponse.redirect(`${afterLoginUrl}?line=error`)
 
   const tokenRes = await fetch('https://api.line.me/oauth2/v2.1/token', {
     method: 'POST',
@@ -25,7 +35,7 @@ export async function GET(req: NextRequest) {
   })
   const tokenData = await tokenRes.json()
   const accessToken = tokenData.access_token || ''
-  if (!accessToken) return NextResponse.redirect(`${base}/?line=error`)
+  if (!accessToken) return NextResponse.redirect(`${afterLoginUrl}?line=error`)
 
   const profileRes = await fetch('https://api.line.me/v2/profile', {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -33,9 +43,9 @@ export async function GET(req: NextRequest) {
   const profile = await profileRes.json()
   const userId = profile.userId || ''
   const displayName = profile.displayName || ''
-  if (!userId) return NextResponse.redirect(`${base}/?line=error`)
+  if (!userId) return NextResponse.redirect(`${afterLoginUrl}?line=error`)
 
-  const res = NextResponse.redirect(`${base}/?line=ok&name=${encodeURIComponent(displayName)}`)
+  const res = NextResponse.redirect(`${afterLoginUrl}?line=ok&name=${encodeURIComponent(displayName)}&uid=${encodeURIComponent(userId)}`)
   const session = await getIronSession<SessionData>(req, res, sessionOptions)
   session.lineUserId = userId
   session.lineName = displayName
