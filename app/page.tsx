@@ -151,6 +151,9 @@ export default function Home() {
     setTicketSlot(selectedSlot)
     setTicketTime(display)
     const uid = localStorage.getItem('sp_user_id') || lineUserId
+    fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: selectedSlot, status: 'occupied', source: 'web' }) })
+      .then(() => loadStatus())
+      .catch(() => {})
     fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: selectedSlot, user_id: uid, entrance_time: display }) }).catch(() => {})
     showToast('✅ ยืนยันช่องจอดแล้ว! ระบบส่งแจ้งเตือนเข้า LINE แล้ว')
   }
