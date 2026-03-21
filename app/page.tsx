@@ -292,10 +292,25 @@ export default function Home() {
     setTimeout(() => { if (exitCar) exitCar.style.transform = 'translateX(320px)' }, 2500)
     setTimeout(() => {
       const slot = checkoutData.slot || localStorage.getItem('sp_slot') || ''
+      const uid = localStorage.getItem('sp_user_id') || lineUserId
       if (slot) {
         fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, status: 'vacant', source: 'checkout' }) })
           .then(() => loadStatus())
           .catch(() => {})
+      }
+      if (uid && slot) {
+        fetch('/api/checkout-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: uid,
+            slot: checkoutData.slot || slot,
+            duration: checkoutData.duration,
+            fee: checkoutData.fee,
+            time_in: checkoutData.timeIn,
+            time_out: checkoutData.timeNow,
+          }),
+        }).catch(() => {})
       }
       setExitDone(true)
       localStorage.removeItem('sp_slot')

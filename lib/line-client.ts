@@ -27,6 +27,10 @@ export function replyText(replyToken: string, text: string) {
   return lineRequest('reply', { replyToken, messages: [{ type: 'text', text }] })
 }
 
+export function replyMessage(replyToken: string, messages: object[]) {
+  return lineRequest('reply', { replyToken, messages })
+}
+
 export function pushParkingTicket(userId: string, slot: string, entranceTime: string) {
   const message = {
     type: 'flex',
