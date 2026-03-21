@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState<string | null>(null)
   const [toast, setToast] = useState('')
+  const [unlinkConfirm, setUnlinkConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
@@ -94,6 +95,15 @@ export default function AdminPage() {
   async function handleLogout() {
     await fetch('/api/admin/logout', { method: 'POST' })
     setAuthed(false); setSlots([]); setHistory([]); setUsers([])
+  }
+
+  async function unlinkUser(lineUserId: string) {
+    setLoading(`unlink-${lineUserId}`)
+    const r = await fetch('/api/admin/unlink-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ line_user_id: lineUserId }) })
+    setLoading(null)
+    setUnlinkConfirm(null)
+    if (r.ok) { showToast('✅ ยกเลิกการเชื่อมต่อ LINE แล้ว'); loadUsers() }
+    else showToast('เกิดข้อผิดพลาด')
   }
 
   async function setSlotStatus(slot: string, status: 'occupied' | 'vacant') {
@@ -174,6 +184,27 @@ export default function AdminPage() {
           </button>
         ))}
       </div>
+
+      {/* Unlink confirm modal */}
+      {unlinkConfirm && (
+        <div className="modal-overlay" onClick={() => setUnlinkConfirm(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon">⚠️</div>
+            <div className="modal-title">ยกเลิกการเชื่อมต่อ LINE</div>
+            <div className="modal-body">
+              คุณต้องการยกเลิกการเชื่อมต่อ LINE ของ<br />
+              <strong>{unlinkConfirm.name}</strong> ใช่หรือไม่?<br />
+              <span className="modal-note">ระบบจะลบข้อมูล LINE และจบ session การจอดที่ยังค้างอยู่</span>
+            </div>
+            <div className="modal-actions">
+              <button className="modal-btn-cancel" onClick={() => setUnlinkConfirm(null)}>ยกเลิก</button>
+              <button className="modal-btn-confirm" onClick={() => unlinkUser(unlinkConfirm.id)}>
+                {loading === `unlink-${unlinkConfirm.id}` ? '⏳ กำลังดำเนินการ...' : 'ยืนยัน ยกเลิก LINE'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="content">
 
@@ -292,11 +323,11 @@ export default function AdminPage() {
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>ชื่อ</th><th>ประเภท</th><th>จอดอยู่ที่</th><th>วันที่สมัคร</th></tr>
+                  <tr><th>ชื่อ</th><th>ประเภท</th><th>จอดอยู่ที่</th><th>วันที่สมัคร</th><th></th></tr>
                 </thead>
                 <tbody>
                   {users.length === 0 && (
-                    <tr><td colSpan={4} className="empty">ไม่มีผู้ใช้</td></tr>
+                    <tr><td colSpan={5} className="empty">ไม่มีผู้ใช้</td></tr>
                   )}
                   {users.map((u, i) => (
                     <tr key={i} className={u.parked_at ? 'row-active' : ''}>
@@ -312,6 +343,17 @@ export default function AdminPage() {
                           : <span className="none-tag">-</span>}
                       </td>
                       <td className="date-cell">{formatTime(u.joined)}</td>
+                      <td>
+                        {u.type === 'LINE' && (
+                          <button
+                            className="btn-unlink"
+                            disabled={loading === `unlink-${u.id}`}
+                            onClick={() => setUnlinkConfirm({ id: u.id, name: u.name })}
+                          >
+                            {loading === `unlink-${u.id}` ? '⏳' : 'ยกเลิก LINE'}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -465,6 +507,22 @@ const dashStyle = `
   .log-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .log-time{font-size:11px;color:#555577}
   .log-user{font-size:11px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+
+  .btn-unlink{background:rgba(248,81,73,.1);color:#f85149;border:1px solid rgba(248,81,73,.2);border-radius:8px;padding:5px 10px;font-size:11px;font-family:'Prompt',sans-serif;cursor:pointer;white-space:nowrap;font-weight:600}
+  .btn-unlink:hover:not(:disabled){background:rgba(248,81,73,.22)}
+  .btn-unlink:disabled{opacity:.4;cursor:not-allowed}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:100;display:grid;place-items:center;padding:24px}
+  .modal-card{background:#0d1626;border:1px solid rgba(248,81,73,.3);border-radius:20px;padding:32px 28px;max-width:380px;width:100%;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .modal-icon{font-size:36px;margin-bottom:12px}
+  .modal-title{font-size:18px;font-weight:700;color:#f85149;margin-bottom:12px}
+  .modal-body{font-size:14px;color:#c9d1d9;line-height:1.7;margin-bottom:8px}
+  .modal-note{font-size:12px;color:#555577;display:block;margin-top:8px}
+  .modal-actions{display:flex;gap:10px;margin-top:22px}
+  .modal-btn-cancel{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:11px;color:#8b949e;font-family:'Prompt',sans-serif;font-size:14px;cursor:pointer}
+  .modal-btn-cancel:hover{background:rgba(255,255,255,.09)}
+  .modal-btn-confirm{flex:1;background:rgba(248,81,73,.15);border:1px solid rgba(248,81,73,.35);border-radius:12px;padding:11px;color:#f85149;font-family:'Prompt',sans-serif;font-size:14px;font-weight:700;cursor:pointer}
+  .modal-btn-confirm:hover{background:rgba(248,81,73,.28)}
 
   @media(max-width:600px){
     .stats-row{grid-template-columns:repeat(2,1fr)}
