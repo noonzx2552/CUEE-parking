@@ -5,5 +5,6 @@ export async function GET() {
     API_BASE: 'api',
     LINE_LIFF_ID: process.env.LINE_LIFF_ID || '',
     LINE_CLIENT_ID: process.env.LINE_LOGIN_CLIENT_ID || '',
+    LINE_OA_ID: process.env.LINE_OA_ID || '',
   })
 }
