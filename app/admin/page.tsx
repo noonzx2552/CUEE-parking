@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 interface SlotSession { start_time: string; user_name: string; source: string }
 interface Slot { slot_name: string; status: string; updated_at?: string; updated_by?: string; session?: SlotSession | null }
 interface Session {
-  _id: string; slot_name: string; line_user_id?: string
+  _id: string; slot_name: string; line_user_id?: string; user_name?: string
   start_time: string; ended: boolean; ended_at?: string; source?: string
 }
 interface User {
@@ -267,7 +267,11 @@ export default function AdminPage() {
                       <td>{formatTime(s.start_time)}</td>
                       <td>{s.ended_at ? formatTime(s.ended_at) : <span className="badge-now">กำลังจอด</span>}</td>
                       <td>{formatDuration(s.start_time, s.ended_at)}</td>
-                      <td className="user-cell">{s.line_user_id ? <span className="line-tag">LINE</span> : <span className="sys-tag">-</span>}</td>
+                      <td className="user-cell">
+                        {s.user_name && s.user_name !== '-'
+                          ? <span className="user-name-tag">👤 {s.user_name}</span>
+                          : <span className="sys-tag">-</span>}
+                      </td>
                       <td><span className="src-tag">{s.source || 'system'}</span></td>
                       <td>{s.ended ? <span className="badge-end">จบแล้ว</span> : <span className="badge-now">ใช้งาน</span>}</td>
                     </tr>
@@ -440,6 +444,7 @@ const dashStyle = `
   .badge-now{background:rgba(16,185,129,.15);color:#10b981;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
   .badge-end{background:rgba(255,255,255,.06);color:#555577;border-radius:6px;padding:2px 8px;font-size:11px}
   .line-tag{background:rgba(0,185,0,.15);color:#4ade80;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
+  .user-name-tag{background:rgba(188,140,255,.12);color:#bc8cff;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
   .pw-tag{background:rgba(188,140,255,.15);color:#bc8cff;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
   .src-tag{background:rgba(255,255,255,.05);color:#8b949e;border-radius:6px;padding:2px 7px;font-size:11px}
   .sys-tag{color:#333355}

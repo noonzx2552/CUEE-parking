@@ -19,7 +19,16 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .toArray()
 
-    return NextResponse.json({ sessions })
+    const lineUsers = await db.collection('line_users').find({}).toArray()
+    const userMap: Record<string, string> = {}
+    for (const u of lineUsers) userMap[u.line_user_id] = u.display_name || u.line_user_id
+
+    const result = sessions.map(s => ({
+      ...s,
+      user_name: s.line_user_id ? (userMap[s.line_user_id] || s.line_user_id) : '-',
+    }))
+
+    return NextResponse.json({ sessions: result })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
