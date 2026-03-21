@@ -64,6 +64,8 @@ export async function createSession(slotName: string, lineUserId = '', duration?
     warn_minutes: warn ?? parseInt(process.env.DEFAULT_WARNING_MINUTES || '20'),
     ended: false,
     source,
+    last_notified_period: 0,
+    warned: false,
     created_at: now,
     updated_at: now,
   }

@@ -122,6 +122,21 @@ export default function Home() {
     return () => clearInterval(id)
   }, [loadStatus])
 
+  // Server-side billing poll — reliable notification even when tab is backgrounded
+  const billPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => {
+    if (billPollRef.current) { clearInterval(billPollRef.current); billPollRef.current = null }
+    if (!confirmed || exitDone) return
+    const uid = localStorage.getItem('sp_user_id') || lineUserId
+    if (!uid) return
+    const doBillingTick = () => {
+      fetch('/api/billing-tick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: uid }) }).catch(() => {})
+    }
+    doBillingTick()
+    billPollRef.current = setInterval(doBillingTick, 15000)
+    return () => { if (billPollRef.current) clearInterval(billPollRef.current) }
+  }, [confirmed, exitDone, lineUserId])
+
   function handleLineAdd() {
     if (lineConnected || !window.liff) return
     const redirectUri = window.location.href.split('?')[0]
@@ -192,14 +207,13 @@ export default function Home() {
 
   function startTimer(slot: string, fromTime?: number) {
     stopTimer(slot)
-    const uid = localStorage.getItem('sp_user_id') || lineUserId
     const startTime = fromTime || Date.now()
     const elapsed = Math.floor((Date.now() - startTime) / 1000)
     const initPeriod = elapsed > 15 ? Math.floor((elapsed - 15) / 20) : 0
     const session: Session = { startTime, warned: elapsed >= 10, lastBilledPeriod: initPeriod, intervalId: null }
     timerMap.current[slot] = session
-    session.intervalId = setInterval(() => tickTimer(slot, uid), 1000)
-    tickTimer(slot, uid)
+    session.intervalId = setInterval(() => tickTimer(slot), 1000)
+    tickTimer(slot)
   }
 
   function stopTimer(slot: string) {
@@ -210,7 +224,7 @@ export default function Home() {
     setTimerDisplay(prev => { const n = { ...prev }; delete n[slot]; return n })
   }
 
-  function tickTimer(slot: string, uid: string) {
+  function tickTimer(slot: string) {
     const FREE_SECONDS = 15
     const BILLING_INTERVAL = 20
     const BILLING_RATE = 20
@@ -225,10 +239,6 @@ export default function Home() {
       val = remaining + 's'
       cls = elapsed >= 10 ? 'timer-val warn' : 'timer-val'
       lbl = 'จอดฟรีเหลือ'
-      if (elapsed >= 10 && !s.warned) {
-        s.warned = true
-        if (uid) fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, user_id: uid, type: 'warn', remaining }) }).catch(() => {})
-      }
     } else {
       const overTime = elapsed - FREE_SECONDS
       const currentPeriod = 1 + Math.floor(overTime / BILLING_INTERVAL)
@@ -237,10 +247,6 @@ export default function Home() {
       val = remaining + 's'
       cls = remaining <= 5 ? 'timer-val over' : 'timer-val warn'
       lbl = `💰 ${fee}฿ · คิดเพิ่มใน`
-      if (currentPeriod > s.lastBilledPeriod) {
-        s.lastBilledPeriod = currentPeriod
-        if (uid) fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, user_id: uid, type: 'billing', fee, period: currentPeriod, elapsed }) }).catch(() => {})
-      }
     }
     setTimerDisplay(prev => ({ ...prev, [slot]: { val, cls, lbl } }))
   }
