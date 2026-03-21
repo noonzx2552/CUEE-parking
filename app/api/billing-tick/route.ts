@@ -35,10 +35,41 @@ export async function POST(req: NextRequest) {
     // Send warn notification once before free period ends
     if (!alreadyWarned && elapsed >= 10 && elapsed < FREE_SECONDS && isLineConfigured()) {
       const remaining = FREE_SECONDS - elapsed
-      await pushMessage(user_id, [{
-        type: 'text',
-        text: `⚠️ ช่อง ${session.slot_name}\nเหลือเวลาจอดฟรีอีก ${remaining} วินาที`,
-      }]).catch(() => {})
+      const warnFlex = {
+        type: 'flex',
+        altText: `⚠️ ช่อง ${session.slot_name} — เหลือเวลาจอดฟรีอีก ${remaining} วินาที`,
+        contents: {
+          type: 'bubble',
+          header: {
+            type: 'box', layout: 'vertical', backgroundColor: '#d97706', paddingAll: '16px',
+            contents: [
+              { type: 'text', text: 'SmartPark', color: '#ffffff', weight: 'bold', size: 'lg' },
+              { type: 'text', text: 'แจ้งเตือนก่อนหมดเวลาจอดฟรี', color: '#fde68a', size: 'xs' },
+            ],
+          },
+          body: {
+            type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '16px',
+            contents: [
+              { type: 'box', layout: 'horizontal', contents: [
+                { type: 'text', text: 'ช่องจอด', color: '#64748b', size: 'sm', flex: 1 },
+                { type: 'text', text: session.slot_name, align: 'end', weight: 'bold', size: 'sm', color: '#1e293b' },
+              ]},
+              { type: 'separator' },
+              { type: 'box', layout: 'horizontal', paddingTop: '8px', contents: [
+                { type: 'text', text: 'เหลือเวลาฟรี', color: '#1e293b', size: 'md', weight: 'bold', flex: 1 },
+                { type: 'text', text: `${remaining} วินาที`, align: 'end', weight: 'bold', size: 'md', color: '#d97706' },
+              ]},
+            ],
+          },
+          footer: {
+            type: 'box', layout: 'vertical', backgroundColor: '#fffbeb', paddingAll: '10px',
+            contents: [
+              { type: 'text', text: '15 วินาทีแรกจอดฟรี หลังจากนั้นเริ่มคิดค่าบริการ', size: 'xs', color: '#92400e', align: 'center' },
+            ],
+          },
+        },
+      }
+      await pushMessage(user_id, [warnFlex]).catch(() => {})
       await db.collection('parking_sessions').updateOne(
         { _id: session._id },
         { $set: { warned: true } }
@@ -49,15 +80,49 @@ export async function POST(req: NextRequest) {
     if (isLineConfigured() && currentPeriod > lastNotifiedPeriod) {
       for (let p = lastNotifiedPeriod + 1; p <= currentPeriod; p++) {
         const periodFee = p * BILLING_RATE
-        // Calculate elapsed at the moment this period started
         const periodElapsed = FREE_SECONDS + (p - 1) * BILLING_INTERVAL
         const m = Math.floor(periodElapsed / 60)
         const s = periodElapsed % 60
-        const duration = m > 0 ? `${m} นาที ${s} วินาที` : `${s} วินาที`
-        await pushMessage(user_id, [{
-          type: 'text',
-          text: `⏱ ช่อง ${session.slot_name} — จอดมา ${duration}\n💰 ค่าจอดสะสม ${periodFee} บาท (รอบที่ ${p})\nกรุณาชำระเมื่อออกจากที่จอด`,
-        }]).catch(() => {})
+        const durationText = m > 0 ? `${m} นาที ${s} วินาที` : `${s} วินาที`
+        const billingFlex = {
+          type: 'flex',
+          altText: `⏱ ช่อง ${session.slot_name} — ค่าจอดสะสม ${periodFee} บาท (รอบที่ ${p})`,
+          contents: {
+            type: 'bubble',
+            header: {
+              type: 'box', layout: 'vertical', backgroundColor: '#ea580c', paddingAll: '16px',
+              contents: [
+                { type: 'text', text: 'SmartPark', color: '#ffffff', weight: 'bold', size: 'lg' },
+                { type: 'text', text: 'แจ้งเตือนค่าจอด', color: '#fed7aa', size: 'xs' },
+              ],
+            },
+            body: {
+              type: 'box', layout: 'vertical', spacing: 'md', paddingAll: '16px',
+              contents: [
+                { type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'ช่องจอด', color: '#64748b', size: 'sm', flex: 1 },
+                  { type: 'text', text: session.slot_name, align: 'end', weight: 'bold', size: 'sm', color: '#1e293b' },
+                ]},
+                { type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'จอดมา', color: '#64748b', size: 'sm', flex: 1 },
+                  { type: 'text', text: durationText, align: 'end', size: 'sm', color: '#1e293b' },
+                ]},
+                { type: 'separator' },
+                { type: 'box', layout: 'horizontal', paddingTop: '8px', contents: [
+                  { type: 'text', text: 'ค่าจอดสะสม', color: '#1e293b', size: 'md', weight: 'bold', flex: 1 },
+                  { type: 'text', text: `${periodFee} บาท`, align: 'end', weight: 'bold', size: 'md', color: '#ea580c' },
+                ]},
+              ],
+            },
+            footer: {
+              type: 'box', layout: 'vertical', backgroundColor: '#fff7ed', paddingAll: '10px',
+              contents: [
+                { type: 'text', text: `รอบที่ ${p} · กรุณาชำระเมื่อออกจากที่จอด`, size: 'xs', color: '#9a3412', align: 'center' },
+              ],
+            },
+          },
+        }
+        await pushMessage(user_id, [billingFlex]).catch(() => {})
       }
       await db.collection('parking_sessions').updateOne(
         { _id: session._id },

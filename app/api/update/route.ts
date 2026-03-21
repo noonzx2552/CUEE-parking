@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSlot, setSlotStatus, endActiveSessions, createSession } from '@/lib/parking-repository'
 import { validateSignedDeviceRequest } from '@/lib/device-auth'
+import { getDb } from '@/lib/mongodb'
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +25,8 @@ export async function POST(req: NextRequest) {
     const currentStatus = current?.status || ''
     await setSlotStatus(slot, status, source)
 
-    if (status !== currentStatus) {
+    const changed = status !== currentStatus
+    if (changed) {
       if (status === 'occupied') {
         await endActiveSessions(slot)
         await createSession(slot, lineUserId, undefined, undefined, source)
@@ -33,7 +35,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, slot, status, changed: status !== currentStatus })
+    // Open gate for 8 seconds on entry OR exit
+    const shouldOpenGate = changed || source === 'checkout'
+    if (shouldOpenGate) {
+      const db = await getDb()
+      await db.collection('slots').updateOne(
+        { slot_name: slot },
+        { $set: { gate_open_until: new Date(Date.now() + 8000).toISOString() } }
+      )
+    }
+
+    return NextResponse.json({ success: true, slot, status, changed })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }

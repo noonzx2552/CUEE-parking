@@ -266,6 +266,112 @@ void syncNTP() {
 
 ---
 
+## Gate Control API (ไม้กั้น)
+
+ESP32 ที่ควบคุมไม้กั้นให้ **poll** endpoint นี้ทุก 1 วินาที แล้วยกไม้เมื่อ `open: true`
+
+### Endpoint
+
+```
+GET https://spotsync-cuee.vercel.app/api/gate/status?slot=A1&api_key=<DEVICE_API_KEY>
+```
+
+หรือส่ง header แทน query param ก็ได้:
+```
+GET /api/gate/status?slot=A1
+x-api-key: <DEVICE_API_KEY>
+```
+
+### Response
+
+```json
+{ "slot": "A1", "open": true,  "until": "2024-03-21T10:30:08.000Z" }
+{ "slot": "A1", "open": false, "until": null }
+```
+
+`open: true` จะคงอยู่ **8 วินาที** หลังจากมีการเปลี่ยนสถานะ (เข้า หรือ ออก)
+
+### เมื่อไรไม้กั้นจะเปิด
+
+| กรณี | trigger |
+|------|---------|
+| รถเข้า — ยืนยันช่องจอดในแอป | `POST /api/update` status: `occupied` |
+| รถออก — ยืนยันชำระเงินในแอป | `POST /api/update` source: `checkout` |
+| เซ็นเซอร์ตรวจจับรถ (ESP32 อื่น) | `POST /api/update` status: `occupied` source: `sensor` |
+
+### โค้ด ESP32 สำหรับไม้กั้น
+
+```cpp
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const char* WIFI_SSID      = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";
+const char* GATE_API_URL   = "https://spotsync-cuee.vercel.app/api/gate/status";
+const char* DEVICE_API_KEY = "YOUR_DEVICE_API_KEY";
+const char* GATE_SLOT      = "A1";   // ช่องที่ไม้กั้นนี้ดูแล ("entry" หรือชื่อ slot)
+
+const int SERVO_PIN = 13;  // หรือ relay pin สำหรับ servo/motor
+bool gateIsOpen = false;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(SERVO_PIN, OUTPUT);
+  digitalWrite(SERVO_PIN, LOW);
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) { delay(500); }
+  Serial.println("WiFi connected");
+}
+
+void loop() {
+  bool shouldOpen = checkGate();
+
+  if (shouldOpen && !gateIsOpen) {
+    openGate();
+  } else if (!shouldOpen && gateIsOpen) {
+    closeGate();
+  }
+
+  delay(1000);  // poll ทุก 1 วินาที
+}
+
+bool checkGate() {
+  if (WiFi.status() != WL_CONNECTED) return false;
+
+  HTTPClient http;
+  String url = String(GATE_API_URL) + "?slot=" + GATE_SLOT + "&api_key=" + DEVICE_API_KEY;
+  http.begin(url);
+  http.setTimeout(3000);
+
+  int httpCode = http.GET();
+  if (httpCode != 200) { http.end(); return false; }
+
+  StaticJsonDocument<128> doc;
+  deserializeJson(doc, http.getString());
+  http.end();
+
+  return doc["open"] | false;
+}
+
+void openGate() {
+  Serial.println("🔓 Gate OPEN");
+  digitalWrite(SERVO_PIN, HIGH);  // ปรับตามวงจรจริง (servo / relay)
+  gateIsOpen = true;
+}
+
+void closeGate() {
+  Serial.println("🔒 Gate CLOSE");
+  digitalWrite(SERVO_PIN, LOW);
+  gateIsOpen = false;
+}
+```
+
+> **หมายเหตุ:** ถ้าใช้ Servo motor ให้แทน `digitalWrite` ด้วย `myServo.write(90)` / `myServo.write(0)` ตามมุมที่ต้องการ
+
+---
+
 ## Slot Names
 
 ชื่อช่องจอดที่ใช้ในระบบ (ต้องตรงกับ env var `SMARTPARK_SLOTS`):
@@ -281,26 +387,35 @@ void syncNTP() {
 
 ---
 
-## Flow การทำงาน
+## Flow การทำงานทั้งระบบ
 
 ```
-เซ็นเซอร์ตรวจจับ
-       │
-       ▼
-ระยะ ≤ 30 cm?
-   │         │
-  YES        NO
-   │         │
-"occupied" "vacant"
-       │
-       ▼
-POST /api/update
-  + x-api-key header
-       │
-       ▼
-Server อัปเดต MongoDB
-  + ส่ง LINE notification
-  + อัปเดตหน้าเว็บ Real-time
+[ทางเข้า]
+รถมาถึง → สแกน QR ในแอป → ยืนยันช่องจอด
+                                    │
+                              POST /api/update
+                              status: occupied
+                                    │
+                         ┌──────────┴──────────┐
+                         │                     │
+                  MongoDB อัปเดต        gate_open_until = now+8s
+                  LINE ticket ส่ง              │
+                                    ESP32 gate poll → open ✓
+
+[ระหว่างจอด]
+ทุก 15 วินาที client ping /api/billing-tick
+→ server คำนวณ elapsed จาก MongoDB start_time
+→ ส่ง LINE Flex Message แจ้งค่าจอดทุกรอบ
+
+[ทางออก]
+กดยืนยันชำระเงิน → POST /api/update
+                    status: vacant, source: checkout
+                                    │
+                         ┌──────────┴──────────┐
+                         │                     │
+                  LINE receipt ส่ง      gate_open_until = now+8s
+                                               │
+                                    ESP32 gate poll → open ✓
 ```
 
 ---
