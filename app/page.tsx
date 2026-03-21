@@ -47,9 +47,11 @@ export default function Home() {
   const loadStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/get-status')
-      const data: Slot[] = await res.json()
-      setSlots(data)
-      setLastUpdate(new Date().toLocaleTimeString('th-TH'))
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setSlots(data)
+        setLastUpdate(new Date().toLocaleTimeString('th-TH'))
+      }
     } catch { /* ignore */ }
   }, [])
 
