@@ -334,18 +334,16 @@ export default function Home() {
         .tk-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
         .tk-label{color:var(--text-muted)}
         .tk-val{font-weight:600;color:#a5b4fc}
-        .footer{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;background:rgba(15,23,42,.9);backdrop-filter:blur(10px);border-top:1px solid var(--glass-border);margin-top:20px}
-        .fclk{font-family:'Orbitron',sans-serif;font-size:12px;color:var(--text-main);font-weight:700}
-        .fupd{font-size:10px;color:var(--text-muted)}
-        .fbtn{padding:8px 16px;border-radius:12px;border:none;font-size:12px;font-weight:600;font-family:'Prompt',sans-serif;cursor:pointer;color:#fff}
-        .btn-ref{background:rgba(255,255,255,.1)}
-        .btn-out{background:rgba(244,63,94,.2);color:var(--danger)}
-        .test-panel{background:rgba(15,23,42,.95);border-top:1px solid var(--glass-border);padding:15px 20px}
-        .test-title{font-size:10px;color:var(--warning);font-weight:600;margin-bottom:10px;text-align:center}
-        .test-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-        .test-btn{padding:8px 4px;border-radius:8px;font-size:10px;font-weight:600;border:none;cursor:pointer}
-        .t-in{background:rgba(244,63,94,.15);color:var(--danger)}
-        .t-out{background:rgba(16,185,129,.15);color:var(--success)}
+        .topbar{position:sticky;top:0;z-index:50;background:rgba(15,23,42,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+        .topbar-clock{font-family:'Orbitron',sans-serif;font-size:13px;color:var(--text-main);font-weight:700;line-height:1.3}
+        .topbar-upd{font-size:9px;color:var(--text-muted)}
+        .topbar-btns{display:flex;gap:8px}
+        .tbtn{padding:8px 14px;border-radius:10px;border:none;font-size:12px;font-weight:600;font-family:'Prompt',sans-serif;cursor:pointer;color:#fff;display:flex;align-items:center;gap:4px}
+        .tbtn-ref{background:rgba(255,255,255,.1)}
+        .tbtn-ref:hover{background:rgba(255,255,255,.16)}
+        .tbtn-out{background:rgba(244,63,94,.18);color:var(--danger);border:1px solid rgba(244,63,94,.2)}
+        .tbtn-out:hover{background:rgba(244,63,94,.28)}
+        .page-wrap{max-width:520px;margin:0 auto;padding-bottom:32px}
         .overlay-dark{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:20px;overflow-y:auto}
         .checkout-card{background:rgba(30,41,59,.95);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:30px 25px;text-align:center;width:100%;max-width:360px;position:relative}
         .close-btn{position:absolute;top:15px;right:20px;background:none;border:none;color:#94a3b8;font-size:24px;cursor:pointer}
@@ -366,6 +364,19 @@ export default function Home() {
 
       {toast && <div className={`toast${toast ? ' show' : ''}`}>{toast}</div>}
 
+      {/* Topbar — time + action buttons */}
+      <div className="topbar">
+        <div>
+          <div className="topbar-clock">{currentTime || '--:--:--'}</div>
+          {lastUpdate && <div className="topbar-upd">อัปเดต: {lastUpdate}</div>}
+        </div>
+        <div className="topbar-btns">
+          <button className="tbtn tbtn-ref" onClick={loadStatus}>↻ รีเฟรช</button>
+          <button className="tbtn tbtn-out" onClick={showCheckoutPage}>🚪 ออกรถ</button>
+        </div>
+      </div>
+
+      <div className="page-wrap">
       <div className="hdr">
         <div className="hdr-row">
           <div className="hdr-icon">P</div>
@@ -456,27 +467,7 @@ export default function Home() {
         )}
       </div>
 
-      <div className="footer">
-        <div><div className="fclk">{currentTime}</div><div className="fupd">อัปเดต: {lastUpdate}</div></div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="fbtn btn-ref" onClick={loadStatus}>↻ รีเฟรช</button>
-          <button className="fbtn btn-out" onClick={showCheckoutPage}>🚪 ออกรถ</button>
-        </div>
-      </div>
-
-      <div className="test-panel">
-        <div className="test-title">🧪 จำลองเซนเซอร์ (TEST MODE)</div>
-        <div className="test-grid">
-          {['A1','A2','A3','A4'].map(s => (
-            <>
-              <button key={s+'-in'} className="test-btn t-in" onClick={() => simSensor(s, 'occupied')}>{s} เข้า</button>
-            </>
-          ))}
-          {['A1','A2','A3','A4'].map(s => (
-            <button key={s+'-out'} className="test-btn t-out" onClick={() => simSensor(s, 'vacant')}>{s} ออก</button>
-          ))}
-        </div>
-      </div>
+      </div>{/* end page-wrap */}
 
       {showCheckout && (
         <div className="overlay-dark">
