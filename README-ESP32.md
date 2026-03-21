@@ -282,11 +282,28 @@ GET /api/gate/status?slot=A1
 x-api-key: <DEVICE_API_KEY>
 ```
 
-### Response
+### Response — ช่องเดียว
 
 ```json
 { "slot": "A1", "open": true,  "until": "2024-03-21T10:30:08.000Z" }
 { "slot": "A1", "open": false, "until": null }
+```
+
+### หลายช่องพร้อมกัน
+
+```
+GET /api/gate/status?slot=A1&slot=A2&api_key=<key>
+GET /api/gate/status?slot=A1,A2,A3&api_key=<key>
+```
+
+```json
+{
+  "gates": [
+    { "slot": "A1", "open": true,  "until": "2024-03-21T10:30:08.000Z" },
+    { "slot": "A2", "open": false, "until": null },
+    { "slot": "A3", "open": false, "until": null }
+  ]
+}
 ```
 
 `open: true` จะคงอยู่ **8 วินาที** หลังจากมีการเปลี่ยนสถานะ (เข้า หรือ ออก)
