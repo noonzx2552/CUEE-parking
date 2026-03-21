@@ -380,7 +380,7 @@ export default function Home() {
       <div className="hdr">
         <div className="hdr-row">
           <div className="hdr-icon">P</div>
-          <div className="hdr-title">SmartPark</div>
+          <div className="hdr-title">Spotsync</div>
         </div>
         <div className="hdr-sub">ระบบที่จอดรถอัจฉริยะ ชั้น B1</div>
         <div className="live-pill"><div className="lpulse" />LIVE MONITORING</div>
@@ -457,7 +457,7 @@ export default function Home() {
         )}
         {confirmed && ticketSlot && (
           <div className="ticket-card">
-            <div className="ticket-header"><h2>SMART PARK</h2><p>E-Ticket</p></div>
+            <div className="ticket-header"><h2>SPOTSYNC</h2><p>E-Ticket</p></div>
             <div className="ticket-body">
               <div className="tk-row"><span className="tk-label">สถานะ LINE</span><span className="tk-val" style={{ color: lineConnected ? '#10b981' : '#f59e0b' }}>{lineConnected ? '✅ เชื่อมต่อแล้ว' : '⚠️ ยังไม่ได้แอด LINE'}</span></div>
               <div className="tk-row"><span className="tk-label">ช่องจอด</span><span className="tk-val">{ticketSlot}</span></div>
@@ -520,7 +520,7 @@ export default function Home() {
                 <div style={{ padding: 16, textAlign: 'center', background: 'rgba(16,185,129,.1)', borderTop: '1px solid rgba(16,185,129,.2)' }}>
                   <div style={{ fontSize: 22, marginBottom: 6 }}>✅</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#10b981' }}>ออกรถเรียบร้อยแล้ว!</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>ขอบคุณที่ใช้บริการ SmartPark</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>ขอบคุณที่ใช้บริการ Spotsync</div>
                 </div>
               )}
             </div>
