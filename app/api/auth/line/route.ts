@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getIronSession } from 'iron-session'
 import { sessionOptions, SessionData } from '@/lib/session'
 import { upsertLineUser } from '@/lib/parking-repository'
+import { pushMessage, isLineConfigured } from '@/lib/line-client'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -52,6 +53,13 @@ export async function GET(req: NextRequest) {
   await session.save()
 
   try { await upsertLineUser(userId, displayName) } catch { /* ignore */ }
+
+  if (isLineConfigured()) {
+    pushMessage(userId, [{
+      type: 'text',
+      text: `ยินดีต้อนรับสู่ SmartPark! 🎉\nสวัสดีคุณ ${displayName}\n\nคุณเชื่อมต่อ LINE กับระบบเรียบร้อยแล้ว\nระบบจะแจ้งเตือนค่าจอดรถผ่าน LINE นี้\n\nพิมพ์ "สถานะ" เพื่อดูช่องจอดว่าง`,
+    }]).catch(() => {})
+  }
 
   return res
 }
