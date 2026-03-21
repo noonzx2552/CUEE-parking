@@ -143,6 +143,7 @@ export default function Home() {
         setTicketSlot(slot)
         setTicketTime(disp)
         setConfirmed(true)
+        startTimer(slot, new Date(startTime).getTime())
       })
       .catch(() => {})
   }
@@ -178,6 +179,7 @@ export default function Home() {
       .then(() => loadStatus())
       .catch(() => {})
     fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: selectedSlot, user_id: uid, entrance_time: display }) }).catch(() => {})
+    startTimer(selectedSlot)
     showToast('✅ ยืนยันช่องจอดแล้ว! ระบบส่งแจ้งเตือนเข้า LINE แล้ว')
   }
 
@@ -188,10 +190,13 @@ export default function Home() {
     loadStatus()
   }
 
-  function startTimer(slot: string) {
+  function startTimer(slot: string, fromTime?: number) {
     stopTimer(slot)
     const uid = localStorage.getItem('sp_user_id') || lineUserId
-    const session: Session = { startTime: Date.now(), warned: false, lastBilledPeriod: 0, intervalId: null }
+    const startTime = fromTime || Date.now()
+    const elapsed = Math.floor((Date.now() - startTime) / 1000)
+    const initPeriod = elapsed > 15 ? Math.floor((elapsed - 15) / 20) : 0
+    const session: Session = { startTime, warned: elapsed >= 10, lastBilledPeriod: initPeriod, intervalId: null }
     timerMap.current[slot] = session
     session.intervalId = setInterval(() => tickTimer(slot, uid), 1000)
     tickTimer(slot, uid)
