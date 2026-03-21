@@ -104,9 +104,6 @@ export default function QrCodePage() {
   const vacant = slots.filter(s => s.status === 'vacant').length
   const occupied = slots.filter(s => s.status === 'occupied').length
   const pct = ROTATE_SECONDS > 0 ? ((countdown / ROTATE_SECONDS) * 100) : 100
-  // SVG ring
-  const r = 22, circ = 2 * Math.PI * r
-  const dash = (pct / 100) * circ
   const urgency = countdown <= 5
 
   return (
@@ -125,19 +122,41 @@ export default function QrCodePage() {
         .card{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:28px;padding:28px 32px;display:flex;flex-direction:column;align-items:center;backdrop-filter:blur(12px)}
         .card-title{font-size:14px;color:#a78bfa;font-weight:600;letter-spacing:1px;margin-bottom:4px;text-transform:uppercase}
         .card-sub{font-size:12px;color:#333355;margin-bottom:20px}
-        .qr-wrap{position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+        .qr-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;margin-bottom:4px}
         .qr-frame{
           background:#fff;border-radius:20px;padding:14px;
           box-shadow:0 0 40px rgba(124,77,255,.25),0 0 80px rgba(124,77,255,.1);
           transition:opacity .4s ease,transform .4s ease;
         }
-        .qr-frame.fading{opacity:.15;transform:scale(.96)}
-        .countdown-ring{position:absolute;top:-10px;right:-10px;background:#06060e;border-radius:50%;padding:2px}
-        .cd-num{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+        .qr-frame.fading{opacity:.1;transform:scale(.94) blur(4px)}
+
+        /* Countdown bar */
+        .cd-bar-wrap{width:100%;display:flex;flex-direction:column;gap:8px}
+        .cd-top{display:flex;align-items:center;justify-content:space-between}
+        .cd-label{display:flex;align-items:center;gap:6px;font-size:12px;color:#555577}
+        .cd-dot{width:7px;height:7px;border-radius:50%;background:#a78bfa;animation:cdpulse 1s ease infinite}
+        @keyframes cdpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.6)}}
+        .cd-num-pill{
+          display:flex;align-items:center;gap:4px;
+          background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2);
+          border-radius:20px;padding:3px 10px;
+          font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;
+          color:#a78bfa;
+          transition:background .3s,border-color .3s,color .3s;
+        }
+        .cd-num-pill.urgent{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#ef4444;animation:shake .4s ease}
+        @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+        .cd-track{width:100%;height:6px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
+        .cd-fill{
+          height:100%;border-radius:99px;
+          background:linear-gradient(90deg,#7c4dff,#a78bfa);
+          transition:width 1s linear,background .3s;
+          box-shadow:0 0 8px rgba(167,139,250,.4);
+        }
+        .cd-fill.urgent{background:linear-gradient(90deg,#dc2626,#ef4444);box-shadow:0 0 8px rgba(239,68,68,.5)}
+
         .scan-hint{display:flex;align-items:center;gap:8px;font-size:13px;color:#8888aa}
-        .scan-dot{width:8px;height:8px;border-radius:50%;background:#a78bfa;animation:blink 1.2s ease infinite}
-        @keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
-        .refresh-hint{font-size:11px;color:#333355;margin-top:6px}
+        .scan-dot{width:8px;height:8px;border-radius:50%;background:#a78bfa;animation:cdpulse 1.2s ease infinite}
         .slots-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%}
         .slot-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px;text-align:center}
         .slot-card.occ{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05)}
@@ -171,21 +190,22 @@ export default function QrCodePage() {
               <div ref={qrRef} />
             </div>
 
-            {/* Countdown ring */}
-            <div className="countdown-ring">
-              <svg width="52" height="52" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="4" />
-                <circle
-                  cx="26" cy="26" r={r} fill="none"
-                  stroke={urgency ? '#ef4444' : '#a78bfa'}
-                  strokeWidth="4"
-                  strokeDasharray={`${dash} ${circ}`}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dasharray .9s linear, stroke .3s' }}
+            {/* Countdown bar */}
+            <div className="cd-bar-wrap">
+              <div className="cd-top">
+                <div className="cd-label">
+                  <div className="cd-dot" />
+                  QR เปลี่ยนอัตโนมัติทุก {ROTATE_SECONDS}s
+                </div>
+                <div className={`cd-num-pill${urgency ? ' urgent' : ''}`}>
+                  {urgency ? '🔄' : '⏱'} {countdown}s
+                </div>
+              </div>
+              <div className="cd-track">
+                <div
+                  className={`cd-fill${urgency ? ' urgent' : ''}`}
+                  style={{ width: `${pct}%` }}
                 />
-              </svg>
-              <div className="cd-num" style={{ color: urgency ? '#ef4444' : '#a78bfa' }}>
-                {countdown}
               </div>
             </div>
           </div>
@@ -194,7 +214,6 @@ export default function QrCodePage() {
             <div className="scan-dot" />
             พร้อมสแกน — ระบบ CUEE SmartPark
           </div>
-          <div className="refresh-hint">QR เปลี่ยนทุก {ROTATE_SECONDS} วินาที</div>
         </div>
 
         {slots.length > 0 && (
