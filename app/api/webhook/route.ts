@@ -35,10 +35,9 @@ export async function POST(req: NextRequest) {
           const slotRows = slots.map(s => ({
             type: 'box', layout: 'horizontal', paddingTop: '8px', paddingBottom: '8px',
             contents: [
-              { type: 'box', layout: 'vertical', width: '12px', height: '12px', borderRadius: '6px',
+              { type: 'box', layout: 'vertical', width: '12px', height: '12px', cornerRadius: '6px',
                 backgroundColor: s.status === 'vacant' ? '#22c55e' : '#ef4444',
-                contents: [], alignItems: 'center', justifyContent: 'center', margin: 'none',
-                paddingAll: '0px', flex: 0 },
+                contents: [], flex: 0 },
               { type: 'text', text: s.slot_name, size: 'sm', weight: 'bold', color: '#1e293b', margin: 'md', flex: 1 },
               { type: 'text', text: s.status === 'vacant' ? 'ว่าง' : 'ไม่ว่าง',
                 size: 'sm', color: s.status === 'vacant' ? '#16a34a' : '#dc2626', align: 'end', weight: 'bold' },
