@@ -6,6 +6,15 @@ import { useRouter } from 'next/navigation'
 type Tab = 'line' | 'password'
 type State = 'idle' | 'loading' | 'success' | 'error'
 
+const QR_EXPIRE_MS = 5 * 60 * 1000 // 5 นาที
+const ROTATE_SECONDS = 30
+
+function isTokenExpired(token: string) {
+  if (!token) return false
+  const tokenTime = parseInt(token, 36) * ROTATE_SECONDS * 1000
+  return Date.now() - tokenTime > QR_EXPIRE_MS
+}
+
 export default function CheckinPage() {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('line')
@@ -16,15 +25,22 @@ export default function CheckinPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [successName, setSuccessName] = useState('')
   const [liffId, setLiffId] = useState('')
+  const [qrExpired, setQrExpired] = useState(false)
   const liffReady = useRef(false)
 
   // Save entrance time + notify QR to rotate
   useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('t') || ''
+
+    if (token && isTokenExpired(token)) {
+      setQrExpired(true)
+      return
+    }
+
     localStorage.setItem('sp_entrance_time', String(Date.now()))
     localStorage.setItem('sp_entrance_time_display',
       new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }))
     // Consume current QR token → triggers rotation on /qrcode screen
-    const token = new URLSearchParams(window.location.search).get('t') || ''
     fetch('/api/qr-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }).catch(() => {})
   }, [])
 
@@ -120,6 +136,26 @@ export default function CheckinPage() {
   }
 
   const isLoading = state === 'loading'
+
+  if (qrExpired) {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        <div className="bg1" /><div className="bg2" /><div className="bg3" />
+        <div className="success-wrap">
+          <div className="success-circle" style={{ borderColor: 'rgba(239,68,68,.2)', boxShadow: '0 0 40px rgba(239,68,68,.15)' }}>
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+              <circle cx="26" cy="26" r="26" fill="rgba(239,68,68,0.15)" />
+              <path d="M16 16l20 20M36 16L16 36" stroke="#ef4444" strokeWidth="3.5" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div className="success-title" style={{ color: '#ef4444' }}>QR Code หมดอายุ</div>
+          <div className="success-sub">QR Code นี้ใช้งานได้ไม่เกิน 5 นาที</div>
+          <div className="success-sub" style={{ marginTop: 8 }}>กรุณาสแกน QR Code ใหม่ที่หน้าจอทางเข้า</div>
+        </div>
+      </>
+    )
+  }
 
   if (state === 'success') {
     return (
