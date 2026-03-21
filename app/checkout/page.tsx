@@ -22,10 +22,9 @@ export default function CheckoutPage() {
       const script = document.createElement('script')
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
       script.onload = () => {
-        if (qrRef.current) {
-          // @ts-expect-error QRCode global
-          new window.QRCode(qrRef.current, { text: qrData, width: 190, height: 190, colorDark: '#000000', colorLight: '#ffffff', correctLevel: 1 })
-        }
+          if (qrRef.current) {
+            new (window as any).QRCode(qrRef.current, { text: qrData, width: 190, height: 190, colorDark: '#000000', colorLight: '#ffffff', correctLevel: 1 })
+          }
       }
       document.head.appendChild(script)
     }

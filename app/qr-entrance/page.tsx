@@ -11,7 +11,6 @@ export default function QrEntrancePage() {
     script.onload = () => {
       if (qrRef.current) {
         qrRef.current.innerHTML = ''
-        // @ts-expect-error QRCode global
         new window.QRCode(qrRef.current, { text: qrData, width: 240, height: 240, colorDark: '#000000', colorLight: '#ffffff', correctLevel: 1 })
       }
     }

@@ -225,12 +225,10 @@ export default function Home() {
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
         script.onload = () => {
           if (qrRef.current) {
-            // @ts-expect-error QRCode global
             new window.QRCode(qrRef.current, { text: qrData, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff', correctLevel: 1 })
           }
         }
         if (!window.QRCode) document.head.appendChild(script)
-        // @ts-expect-error QRCode global
         else if (qrRef.current) new window.QRCode(qrRef.current, { text: qrData, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff', correctLevel: 1 })
       }
     }, 100)
