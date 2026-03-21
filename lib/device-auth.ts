@@ -6,12 +6,21 @@ export function validateSignedDeviceRequest(rawBody: string, headers: { get(name
   const signature = headers.get('x-signature') || ''
 
   const expectedKey = process.env.DEVICE_API_KEY || ''
-  if (!expectedKey || !apiKey || !timestamp || !signature) return false
+  if (!expectedKey || !apiKey) return false
 
+  // Simple API key check (for Arduino/ESP32 devices)
+  let keyMatch = false
   try {
-    if (!timingSafeEqual(Buffer.from(expectedKey), Buffer.from(apiKey))) return false
+    keyMatch = expectedKey.length === apiKey.length &&
+      timingSafeEqual(Buffer.from(expectedKey), Buffer.from(apiKey))
   } catch { return false }
+  if (!keyMatch) return false
 
+  // If no HMAC headers provided, accept simple key auth
+  if (!timestamp && !signature) return true
+
+  // Full HMAC validation
+  if (!timestamp || !signature) return false
   if (!/^\d+$/.test(timestamp)) return false
 
   const window = parseInt(process.env.DEVICE_HMAC_WINDOW_SECONDS || '300')
