@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 
@@ -19,10 +19,8 @@ export default function CheckinPage() {
   const [state, setState] = useState<State>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [successName, setSuccessName] = useState('')
-  const [liffId, setLiffId] = useState('')
   const [lineOaId, setLineOaId] = useState('')
   const [qrExpired, setQrExpired] = useState(false)
-  const liffReady = useRef(false)
 
   // Save entrance time + notify QR to rotate
   useEffect(() => {
@@ -43,29 +41,10 @@ export default function CheckinPage() {
   // Fetch app config
   useEffect(() => {
     fetch('/api/app-config').then(r => r.json()).then(cfg => {
-      if (cfg.LINE_LIFF_ID) setLiffId(cfg.LINE_LIFF_ID)
       if (cfg.LINE_OA_ID) setLineOaId(cfg.LINE_OA_ID)
     }).catch(() => {})
   }, [])
 
-  // Load LIFF SDK when tab switches to LINE
-  useEffect(() => {
-    if (tab !== 'line' || !liffId || liffReady.current) return
-    const script = document.createElement('script')
-    script.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js'
-    script.onload = async () => {
-      try {
-        await window.liff.init({ liffId })
-        liffReady.current = true
-        // If already logged in via LIFF, auto-capture
-        if (window.liff.isLoggedIn()) {
-          await handleLiffProfile()
-        }
-      } catch { /* ignore init error */ }
-    }
-    document.head.appendChild(script)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, liffId])
 
   async function handleLineLogin() {
     if (state === 'loading') return
