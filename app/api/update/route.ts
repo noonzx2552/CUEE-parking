@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     const slot = (data.slot || '').trim()
     const status = (data.status || '').trim()
     const source = (data.source || 'auto').trim()
+    const lineUserId = (data.line_user_id || '').trim()
 
     if (source === 'sensor' && !validateSignedDeviceRequest(rawBody, req.headers)) {
       return NextResponse.json({ error: 'Unauthorized device request.' }, { status: 401 })
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     if (status !== currentStatus) {
       if (status === 'occupied') {
         await endActiveSessions(slot)
-        await createSession(slot, '', undefined, undefined, source)
+        await createSession(slot, lineUserId, undefined, undefined, source)
       } else {
         await endActiveSessions(slot)
       }

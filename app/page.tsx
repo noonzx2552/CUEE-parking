@@ -75,7 +75,10 @@ export default function Home() {
       const storedId = uidParam || localStorage.getItem('sp_user_id') || ''
       setLineConnected(true)
       setLineName(nameParam)
-      if (storedId) setLineUserId(storedId)
+      if (storedId) {
+        setLineUserId(storedId)
+        restoreSessionFromDb(storedId)
+      }
     }
 
     const script = document.createElement('script')
@@ -103,17 +106,11 @@ export default function Home() {
     document.head.appendChild(script)
 
     function initFromStorage() {
-      if (localStorage.getItem('sp_line_added') === '1' && localStorage.getItem('sp_user_id')) {
+      const uid = localStorage.getItem('sp_user_id') || ''
+      if (localStorage.getItem('sp_line_added') === '1' && uid) {
         setLineConnected(true)
-        setLineUserId(localStorage.getItem('sp_user_id') || '')
-      }
-      const savedSlot = localStorage.getItem('sp_slot')
-      if (savedSlot) {
-        setSelectedSlot(savedSlot)
-        setTicketSlot(savedSlot)
-        const disp = localStorage.getItem('sp_entrance_time_display') || ''
-        setTicketTime(disp)
-        setConfirmed(true)
+        setLineUserId(uid)
+        restoreSessionFromDb(uid)
       }
       loadStatus()
     }
@@ -131,6 +128,25 @@ export default function Home() {
     window.liff.login({ redirectUri })
   }
 
+  function restoreSessionFromDb(uid: string) {
+    if (!uid) return
+    fetch(`/api/my-session?user_id=${encodeURIComponent(uid)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.session) return
+        const { slot, startTime } = data.session
+        localStorage.setItem('sp_slot', slot)
+        localStorage.setItem('sp_entrance_time', String(new Date(startTime).getTime()))
+        const disp = new Date(startTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+        localStorage.setItem('sp_entrance_time_display', disp)
+        setSelectedSlot(slot)
+        setTicketSlot(slot)
+        setTicketTime(disp)
+        setConfirmed(true)
+      })
+      .catch(() => {})
+  }
+
   function selectSlot(name: string) {
     if (confirmed) return
     const slot = slots.find(s => s.slot_name === name)
@@ -139,8 +155,16 @@ export default function Home() {
     setSelectedSlot(name)
   }
 
-  function confirmSlot() {
+  async function confirmSlot() {
     if (!selectedSlot) return
+    const uid = localStorage.getItem('sp_user_id') || lineUserId
+    if (uid) {
+      const res = await fetch(`/api/my-session?user_id=${encodeURIComponent(uid)}`).then(r => r.json()).catch(() => ({ session: null }))
+      if (res.session) {
+        showToast(`⚠️ คุณมีการจอดที่ช่อง ${res.session.slot} อยู่แล้ว`)
+        return
+      }
+    }
     setConfirmed(true)
     localStorage.setItem('sp_slot', selectedSlot)
     const display = localStorage.getItem('sp_entrance_time_display') || new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
@@ -151,7 +175,7 @@ export default function Home() {
     setTicketSlot(selectedSlot)
     setTicketTime(display)
     const uid = localStorage.getItem('sp_user_id') || lineUserId
-    fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: selectedSlot, status: 'occupied', source: 'web' }) })
+    fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: selectedSlot, status: 'occupied', source: 'web', line_user_id: uid }) })
       .then(() => loadStatus())
       .catch(() => {})
     fetch('/api/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: selectedSlot, user_id: uid, entrance_time: display }) }).catch(() => {})

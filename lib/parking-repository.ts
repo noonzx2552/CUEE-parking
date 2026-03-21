@@ -76,6 +76,11 @@ export async function getLatestActiveSession(slotName: string) {
   return db.collection(SESSION_COL).findOne({ slot_name: slotName, ended: false }, { sort: { created_at: -1 } })
 }
 
+export async function getActiveSessionByUserId(lineUserId: string) {
+  const db = await getDb()
+  return db.collection(SESSION_COL).findOne({ line_user_id: lineUserId, ended: false }, { sort: { created_at: -1 } })
+}
+
 export async function attachLineUserToActiveSession(slotName: string, lineUserId: string) {
   const session = await getLatestActiveSession(slotName)
   if (!session) return false
