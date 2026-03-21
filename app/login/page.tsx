@@ -21,6 +21,10 @@ export default function CheckinPage() {
   const [successName, setSuccessName] = useState('')
   const [lineOaId, setLineOaId] = useState('')
   const [qrExpired, setQrExpired] = useState(false)
+  const [gatePhase, setGatePhase] = useState<'gate' | 'login'>('gate')
+  const [armAngle, setArmAngle] = useState(0)    // 0 = ปิด, -80 = เปิด
+  const [carX, setCarX] = useState(-80)           // ตำแหน่ง car
+  const [lightColor, setLightColor] = useState('#ef4444')  // ไฟ red→green
 
   // Save entrance time + notify QR to rotate
   useEffect(() => {
@@ -44,6 +48,18 @@ export default function CheckinPage() {
       if (cfg.LINE_OA_ID) setLineOaId(cfg.LINE_OA_ID)
     }).catch(() => {})
   }, [])
+
+  // Gate opening animation sequence
+  useEffect(() => {
+    if (qrExpired) return
+    // t=0.6s: ไฟเขียว + arm ยกขึ้น
+    const t1 = setTimeout(() => { setLightColor('#22c55e'); setArmAngle(-80) }, 600)
+    // t=1.4s: รถวิ่งผ่าน
+    const t2 = setTimeout(() => setCarX(360), 1400)
+    // t=2.8s: fade ออกไปหน้า login
+    const t3 = setTimeout(() => setGatePhase('login'), 2800)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+  }, [qrExpired])
 
 
   async function handleLineLogin() {
@@ -85,6 +101,52 @@ export default function CheckinPage() {
           <div className="success-title" style={{ color: '#ef4444' }}>QR Code หมดอายุ</div>
           <div className="success-sub">QR Code นี้ใช้งานได้ไม่เกิน 5 นาที</div>
           <div className="success-sub" style={{ marginTop: 8 }}>กรุณาสแกน QR Code ใหม่ที่หน้าจอทางเข้า</div>
+        </div>
+      </>
+    )
+  }
+
+  // ── GATE ANIMATION PHASE ─────────────────────────────────────────
+  if (gatePhase === 'gate') {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        <div className="bg1" /><div className="bg2" /><div className="bg3" />
+        <div className="gate-wrap">
+          <div className="gate-logo">SMART PARK</div>
+          <div className="gate-sub">ยินดีต้อนรับ</div>
+          <svg viewBox="0 0 320 130" width="100%" style={{ maxWidth: 340, borderRadius: 16, background: '#0a0a1a', display: 'block', margin: '0 auto' }}>
+            {/* พื้นถนน */}
+            <rect x="0" y="90" width="320" height="40" fill="#1e293b" />
+            <rect x="0" y="105" width="320" height="4" fill="#334155" />
+            {/* เส้นกลางถนน */}
+            {[0,60,120,180,240].map(x => <rect key={x} x={x} y="111" width="36" height="3" fill="#f59e0b" opacity="0.5" rx="1" />)}
+            {/* เสาไม้กั้น */}
+            <rect x="155" y="40" width="8" height="52" fill="#64748b" rx="2" />
+            {/* แขนไม้กั้น — หมุนที่จุด (159, 44) */}
+            <g style={{ transformOrigin: '159px 44px', transform: `rotate(${armAngle}deg)`, transition: 'transform 0.8s cubic-bezier(0.4,0,0.2,1)' }}>
+              <rect x="159" y="40" width="90" height="8" rx="3" fill="#ef4444" />
+              <rect x="179" y="40" width="12" height="8" fill="#fff" opacity="0.5" />
+              <rect x="219" y="40" width="12" height="8" fill="#fff" opacity="0.5" />
+            </g>
+            {/* กล่องไฟสัญญาณ */}
+            <rect x="140" y="18" width="22" height="22" rx="4" fill="#1e293b" stroke="#334155" strokeWidth="1" />
+            <circle cx="151" cy="29" r="7" fill={lightColor} style={{ transition: 'fill 0.4s' }} />
+            {/* รถ */}
+            <g style={{ transform: `translateX(${carX}px)`, transition: carX > 0 ? 'transform 1.1s cubic-bezier(0.4,0,0.2,1)' : 'none' }}>
+              <rect x="0" y="63" width="60" height="26" rx="6" fill="#3b82f6" />
+              <rect x="8" y="55" width="38" height="18" rx="5" fill="#60a5fa" />
+              <rect x="11" y="57" width="15" height="12" rx="2" fill="#bfdbfe" opacity="0.8" />
+              <rect x="30" y="57" width="12" height="12" rx="2" fill="#bfdbfe" opacity="0.8" />
+              <circle cx="12" cy="90" r="7" fill="#1e293b" /><circle cx="12" cy="90" r="4" fill="#475569" />
+              <circle cx="48" cy="90" r="7" fill="#1e293b" /><circle cx="48" cy="90" r="4" fill="#475569" />
+              <rect x="54" y="68" width="6" height="4" rx="1" fill="#fef08a" opacity="0.9" />
+              <rect x="0" y="70" width="5" height="3" rx="1" fill="#ef4444" opacity="0.8" />
+            </g>
+          </svg>
+          <div className="gate-hint" style={{ color: lightColor, transition: 'color 0.4s' }}>
+            {lightColor === '#22c55e' ? '🟢 ไม้กั้นเปิดแล้ว' : '🔴 กำลังตรวจสอบ...'}
+          </div>
         </div>
       </>
     )
@@ -204,6 +266,22 @@ const globalStyles = `
     width:100%;max-width:380px;
     display:flex;flex-direction:column;align-items:center;
   }
+
+  /* Gate animation */
+  .gate-wrap{
+    position:relative;z-index:1;
+    display:flex;flex-direction:column;align-items:center;
+    width:100%;max-width:380px;
+    animation:fadeIn .3s ease;
+  }
+  .gate-logo{
+    font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;
+    background:linear-gradient(90deg,#a78bfa,#fff,#34d399);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    margin-bottom:6px;
+  }
+  .gate-sub{font-size:14px;color:#555577;margin-bottom:20px;letter-spacing:.5px}
+  .gate-hint{margin-top:16px;font-size:14px;font-weight:600;letter-spacing:.3px}
 
   /* Logo */
   .logo-row{display:flex;align-items:center;gap:12px;margin-bottom:6px}
