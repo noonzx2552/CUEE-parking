@@ -250,7 +250,18 @@ export default function Home() {
       if (exitTxt) { exitTxt.textContent = '🟢 ไม้กั้น : เปิด'; exitTxt.setAttribute('fill', '#10b981') }
     }, 1500)
     setTimeout(() => { if (exitCar) exitCar.style.transform = 'translateX(320px)' }, 2500)
-    setTimeout(() => { setExitDone(true); localStorage.removeItem('sp_slot'); localStorage.removeItem('sp_entrance_time') }, 4000)
+    setTimeout(() => {
+      const slot = checkoutData.slot || localStorage.getItem('sp_slot') || ''
+      if (slot) {
+        fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, status: 'vacant', source: 'checkout' }) })
+          .then(() => loadStatus())
+          .catch(() => {})
+      }
+      setExitDone(true)
+      localStorage.removeItem('sp_slot')
+      localStorage.removeItem('sp_entrance_time')
+      localStorage.removeItem('sp_entrance_time_display')
+    }, 4000)
   }
 
   const vacant = slots.filter(s => s.status === 'vacant').length
