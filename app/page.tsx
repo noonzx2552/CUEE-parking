@@ -183,23 +183,32 @@ export default function Home() {
   }
 
   function tickTimer(slot: string, uid: string) {
+    const FREE_SECONDS = 15
+    const BILLING_INTERVAL = 20
+    const BILLING_RATE = 20
+
     const s = timerMap.current[slot]
     if (!s) return
     const elapsed = Math.floor((Date.now() - s.startTime) / 1000)
     let val: string, cls: string, lbl: string
-    if (elapsed < 30) {
-      const remaining = 30 - elapsed
-      val = remaining + 's'; cls = elapsed >= 20 ? 'timer-val warn' : 'timer-val'; lbl = 'เวลาเหลือ'
-      if (elapsed >= 20 && !s.warned) {
+
+    if (elapsed < FREE_SECONDS) {
+      const remaining = FREE_SECONDS - elapsed
+      val = remaining + 's'
+      cls = elapsed >= 10 ? 'timer-val warn' : 'timer-val'
+      lbl = 'จอดฟรีเหลือ'
+      if (elapsed >= 10 && !s.warned) {
         s.warned = true
         if (uid) fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, user_id: uid, type: 'warn', remaining }) }).catch(() => {})
       }
     } else {
-      const overTime = elapsed - 30
-      const currentPeriod = 1 + Math.floor(overTime / 15)
-      const fee = 20 + currentPeriod * 20
-      const remaining = 15 - (overTime % 15)
-      val = remaining + 's'; cls = remaining <= 5 ? 'timer-val over' : 'timer-val warn'; lbl = '⏱ คิดเพิ่มใน'
+      const overTime = elapsed - FREE_SECONDS
+      const currentPeriod = 1 + Math.floor(overTime / BILLING_INTERVAL)
+      const fee = currentPeriod * BILLING_RATE
+      const remaining = BILLING_INTERVAL - (overTime % BILLING_INTERVAL)
+      val = remaining + 's'
+      cls = remaining <= 5 ? 'timer-val over' : 'timer-val warn'
+      lbl = `💰 ${fee}฿ · คิดเพิ่มใน`
       if (currentPeriod > s.lastBilledPeriod) {
         s.lastBilledPeriod = currentPeriod
         if (uid) fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, user_id: uid, type: 'billing', fee, period: currentPeriod }) }).catch(() => {})
@@ -214,7 +223,7 @@ export default function Home() {
     const disp = localStorage.getItem('sp_entrance_time_display') || ''
     if (!s || !ts) { alert('❌ ไม่พบข้อมูลการจอดรถ'); return }
     const elapsed = Math.floor((Date.now() - parseInt(ts)) / 1000)
-    const totalFee = elapsed <= 30 ? 20 : 20 + Math.ceil((elapsed - 30) / 15) * 20
+    const totalFee = elapsed <= 15 ? 0 : Math.ceil((elapsed - 15) / 20) * 20
     const h = Math.floor(elapsed / 3600), m = Math.floor((elapsed % 3600) / 60), sec = elapsed % 60
     const pad = (n: number) => String(n).padStart(2, '0')
     setCheckoutData({ slot: s, timeIn: disp, timeNow: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }), duration: `${pad(h)}:${pad(m)}:${pad(sec)}`, fee: totalFee })

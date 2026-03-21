@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         lines.push('', `ว่าง ${vacant} ช่อง | ไม่ว่าง ${occupied} ช่อง`)
         reply = lines.join('\n')
       } else if (msg.includes('ราคา') || msg.includes('ค่าจอด')) {
-        reply = 'ค่าจอด SmartPark\n30 วินาทีแรก 20 บาท\nหลังจากนั้น +20 บาท ทุก 15 วินาที'
+        reply = 'ค่าจอด SmartPark\n15 วินาทีแรก ฟรี\nหลังจากนั้น +20 บาท ทุก 20 วินาที'
       } else if (msg.includes('วิธีใช้') || msg.includes('help') || msg.includes('ช่วย') || msg.includes('menu') || msg.includes('เมนู')) {
         reply = 'วิธีใช้ SmartPark\n1. สแกน QR ทางเข้า\n2. เพิ่ม LINE และเลือกช่องจอด\n3. รับแจ้งเตือนผ่าน LINE\n4. แสดง QR ตอนออก\n\nพิมพ์คำสั่งได้เลย:\n• "สถานะ" - ดูช่องจอดว่าง\n• "ราคา" - ดูค่าจอด\n• "วิธีใช้" - วิธีการใช้งาน'
       } else {
