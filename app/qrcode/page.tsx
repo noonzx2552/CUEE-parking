@@ -21,6 +21,7 @@ export default function QrCodePage() {
   const [fading, setFading] = useState(false)
   const sdkLoaded = useRef(false)
   const lastToken = useRef('')
+  const lastGen = useRef(-1)
 
   const generateQR = useCallback((token: string) => {
     if (!qrRef.current || !sdkLoaded.current) return
@@ -67,6 +68,26 @@ export default function QrCodePage() {
         }, 400)
       }
     }, 1000)
+    return () => clearInterval(id)
+  }, [generateQR])
+
+  // Poll QR generation — rotate immediately on scan
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const r = await fetch('/api/qr-status')
+        const { gen } = await r.json()
+        if (lastGen.current === -1) { lastGen.current = gen; return }
+        if (gen !== lastGen.current) {
+          lastGen.current = gen
+          const newTok = Date.now().toString(36) // unique token
+          setFading(true)
+          setTimeout(() => { generateQR(newTok); setFading(false) }, 400)
+        }
+      } catch { /* ignore */ }
+    }
+    check()
+    const id = setInterval(check, 2000)
     return () => clearInterval(id)
   }, [generateQR])
 

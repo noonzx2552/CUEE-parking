@@ -18,11 +18,14 @@ export default function CheckinPage() {
   const [liffId, setLiffId] = useState('')
   const liffReady = useRef(false)
 
-  // Save entrance time on mount
+  // Save entrance time + notify QR to rotate
   useEffect(() => {
     localStorage.setItem('sp_entrance_time', String(Date.now()))
     localStorage.setItem('sp_entrance_time_display',
       new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }))
+    // Consume current QR token → triggers rotation on /qrcode screen
+    const token = new URLSearchParams(window.location.search).get('t') || ''
+    fetch('/api/qr-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) }).catch(() => {})
   }, [])
 
   // Fetch LIFF ID
@@ -70,16 +73,17 @@ export default function CheckinPage() {
         setState('error')
         return
       }
+      // Init LIFF if not ready
       if (!liffReady.current) {
-        // LIFF not ready yet — init now
         await window.liff.init({ liffId })
         liffReady.current = true
       }
-      if (!window.liff.isLoggedIn()) {
-        window.liff.login()
+      if (window.liff.isLoggedIn()) {
+        await handleLiffProfile()
         return
       }
-      await handleLiffProfile()
+      // เปิด LINE app โดยตรง (redirectUri กลับมาหน้าเดิม)
+      window.liff.login({ redirectUri: window.location.href })
     } catch {
       setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE')
       setState('error')

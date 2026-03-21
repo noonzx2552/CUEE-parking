@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 
-interface Slot { slot_name: string; status: string }
+interface SlotSession { start_time: string; user_name: string; source: string }
+interface Slot { slot_name: string; status: string; updated_at?: string; updated_by?: string; session?: SlotSession | null }
 interface Session {
   _id: string; slot_name: string; line_user_id?: string
   start_time: string; ended: boolean; ended_at?: string; source?: string
@@ -181,6 +182,37 @@ export default function AdminPage() {
                       {isOcc ? '🔴 มีรถ' : '🟢 ว่าง'}
                     </div>
                   </div>
+
+                  {/* Session details */}
+                  {isOcc && s.session ? (
+                    <div className="slot-info">
+                      <div className="info-row">
+                        <span className="info-key">⏱ จอดมา</span>
+                        <span className="info-val">{formatDuration(s.session.start_time)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-key">🕐 เข้าเมื่อ</span>
+                        <span className="info-val">{formatTime(s.session.start_time)}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-key">👤 ผู้ใช้</span>
+                        <span className="info-val info-user">{s.session.user_name === '-' ? 'ไม่ระบุ' : s.session.user_name}</span>
+                      </div>
+                      <div className="info-row">
+                        <span className="info-key">📡 แหล่ง</span>
+                        <span className="src-tag">{s.session.source}</span>
+                      </div>
+                    </div>
+                  ) : !isOcc && s.updated_at ? (
+                    <div className="slot-info">
+                      <div className="info-row">
+                        <span className="info-key">✅ ว่างตั้งแต่</span>
+                        <span className="info-val">{formatTime(s.updated_at)}</span>
+                      </div>
+                      {s.updated_by && <div className="info-row"><span className="info-key">📡 แหล่ง</span><span className="src-tag">{s.updated_by}</span></div>}
+                    </div>
+                  ) : null}
+
                   <div className="slot-actions">
                     <button
                       className="btn-enter"
@@ -338,6 +370,11 @@ const dashStyle = `
   .slot-badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px}
   .badge-occ{background:rgba(248,81,73,.15);color:#f85149}
   .badge-vac{background:rgba(16,185,129,.15);color:#10b981}
+  .slot-info{background:rgba(0,0,0,.2);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;flex-direction:column;gap:5px}
+  .info-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .info-key{font-size:11px;color:#555577;white-space:nowrap}
+  .info-val{font-size:12px;font-weight:600;color:#c9d1d9;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+  .info-user{color:#bc8cff}
   .slot-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .btn-enter,.btn-exit{border:none;border-radius:10px;padding:10px 6px;font-family:'Prompt',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
   .btn-enter{background:rgba(88,166,255,.15);color:#58a6ff;border:1px solid rgba(88,166,255,.2)}
