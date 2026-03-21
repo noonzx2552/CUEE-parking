@@ -6,13 +6,6 @@ interface Session { startTime: number; warned: boolean; lastBilledPeriod: number
 
 const LIFF_ID = process.env.NEXT_PUBLIC_LINE_LIFF_ID || ''
 
-declare global {
-  interface Window {
-    liff: { init(o: object): Promise<void>; isLoggedIn(): boolean; getProfile(): Promise<{ userId: string; displayName: string }>; login(o: object): void; logout(): void }
-    QRCode: new (el: HTMLElement, opts: object) => void
-    APP_CONFIG?: { LINE_LIFF_ID?: string }
-  }
-}
 
 const modernCar = `<svg viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg" style="width:38px;height:80px;filter:drop-shadow(0 5px 8px rgba(0,0,0,.4))"><rect x="15" y="10" width="70" height="180" rx="20" fill="#e2e8f0"/><rect x="25" y="40" width="50" height="35" rx="8" fill="#1e293b"/><rect x="25" y="120" width="50" height="45" rx="8" fill="#1e293b"/><rect x="20" y="20" width="15" height="5" rx="2" fill="#ef4444"/><rect x="65" y="20" width="15" height="5" rx="2" fill="#ef4444"/><rect x="20" y="175" width="15" height="5" rx="2" fill="#f59e0b"/><rect x="65" y="175" width="15" height="5" rx="2" fill="#f59e0b"/></svg>`
 const modernCarDark = `<svg viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg" style="width:38px;height:80px;filter:drop-shadow(0 5px 8px rgba(0,0,0,.4))"><rect x="15" y="10" width="70" height="180" rx="20" fill="#334155"/><rect x="25" y="40" width="50" height="35" rx="8" fill="#0f172a"/><rect x="25" y="120" width="50" height="45" rx="8" fill="#0f172a"/><rect x="20" y="20" width="15" height="5" rx="2" fill="#ef4444"/><rect x="65" y="20" width="15" height="5" rx="2" fill="#ef4444"/><rect x="20" y="175" width="15" height="5" rx="2" fill="#f59e0b"/><rect x="65" y="175" width="15" height="5" rx="2" fill="#f59e0b"/></svg>`

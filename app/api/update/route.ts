@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSlot, setSlotStatus, endActiveSessions, createSession } from '@/lib/parking-repository'
 import { validateSignedDeviceRequest } from '@/lib/device-auth'

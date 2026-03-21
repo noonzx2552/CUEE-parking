@@ -2,16 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-declare global {
-  interface Window {
-    liff: {
-      init(o: object): Promise<void>
-      isLoggedIn(): boolean
-      getProfile(): Promise<{ userId: string; displayName: string; pictureUrl?: string }>
-      login(o?: object): void
-    }
-  }
-}
 
 type Tab = 'line' | 'password'
 type State = 'idle' | 'loading' | 'success' | 'error'

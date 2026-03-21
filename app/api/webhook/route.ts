@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSlots } from '@/lib/parking-repository'
 import { isLineConfigured, replyText } from '@/lib/line-client'

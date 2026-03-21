@@ -1,9 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 
-declare global {
-  interface Window { QRCode: new (el: HTMLElement, opts: object) => void }
-}
 
 export default function QrCodePage() {
   const qrRef = useRef<HTMLDivElement>(null)
