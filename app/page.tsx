@@ -174,7 +174,6 @@ export default function Home() {
     }
     setTicketSlot(selectedSlot)
     setTicketTime(display)
-    const uid = localStorage.getItem('sp_user_id') || lineUserId
     fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot: selectedSlot, status: 'occupied', source: 'web', line_user_id: uid }) })
       .then(() => loadStatus())
       .catch(() => {})
