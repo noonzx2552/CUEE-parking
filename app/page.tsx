@@ -96,11 +96,6 @@ export default function Home() {
           initFromStorage()
         }
       }).catch(initFromStorage).finally(() => {
-        localStorage.removeItem('sp_slot')
-        localStorage.removeItem('sp_entrance_time')
-        localStorage.removeItem('sp_entrance_time_display')
-        setConfirmed(false)
-        setSelectedSlot(null)
         loadStatus()
       })
     }
@@ -112,9 +107,14 @@ export default function Home() {
         setLineConnected(true)
         setLineUserId(localStorage.getItem('sp_user_id') || '')
       }
-      localStorage.removeItem('sp_slot')
-      localStorage.removeItem('sp_entrance_time')
-      setConfirmed(false)
+      const savedSlot = localStorage.getItem('sp_slot')
+      if (savedSlot) {
+        setSelectedSlot(savedSlot)
+        setTicketSlot(savedSlot)
+        const disp = localStorage.getItem('sp_entrance_time_display') || ''
+        setTicketTime(disp)
+        setConfirmed(true)
+      }
       loadStatus()
     }
   }, [loadStatus])
