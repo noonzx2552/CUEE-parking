@@ -24,7 +24,11 @@ export async function POST(req: NextRequest) {
     if (type === 'billing') {
       const fee = parseInt(data.fee || '0')
       const period = parseInt(data.period || '1')
-      message = `💳 ช่อง ${slot}\nค่าจอดสะสม ${fee} บาท\n(รอบที่ ${period} — เกินฟรี ${period * 20} วินาที)`
+      const elapsed = parseInt(data.elapsed || '0')
+      const m = Math.floor(elapsed / 60)
+      const s = elapsed % 60
+      const duration = m > 0 ? `${m} นาที ${s} วินาที` : `${s} วินาที`
+      message = `⏱ ช่อง ${slot} — จอดมา ${duration}\n💰 ค่าจอดสะสม ${fee} บาท (รอบที่ ${period})\nกรุณาชำระเมื่อออกจากที่จอด`
     } else if (type === 'expired') {
       message = `🚨 ช่อง ${slot}\nเวลาจอดหมดแล้ว กรุณานำรถออกทันที`
     } else {

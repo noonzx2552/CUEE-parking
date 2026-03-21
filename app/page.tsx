@@ -211,7 +211,7 @@ export default function Home() {
       lbl = `💰 ${fee}฿ · คิดเพิ่มใน`
       if (currentPeriod > s.lastBilledPeriod) {
         s.lastBilledPeriod = currentPeriod
-        if (uid) fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, user_id: uid, type: 'billing', fee, period: currentPeriod }) }).catch(() => {})
+        if (uid) fetch('/api/notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slot, user_id: uid, type: 'billing', fee, period: currentPeriod, elapsed }) }).catch(() => {})
       }
     }
     setTimerDisplay(prev => ({ ...prev, [slot]: { val, cls, lbl } }))
