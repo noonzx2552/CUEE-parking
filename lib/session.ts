@@ -5,6 +5,9 @@ export interface SessionData {
   adminUsername?: string
   lineUserId?: string
   lineName?: string
+  userId?: string
+  userName?: string
+  loginType?: 'line' | 'password'
 }
 
 export const sessionOptions: SessionOptions = {
