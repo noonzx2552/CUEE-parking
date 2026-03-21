@@ -1,6 +1,6 @@
 import { getDb } from './mongodb'
 
-const SLOTS = (process.env.PARKING_SLOTS || 'A1,A2,A3,A4').split(',').map(s => s.trim())
+const SLOTS = (process.env.SMARTPARK_SLOTS || process.env.PARKING_SLOTS || 'A1,A2,A3,A4').split(',').map(s => s.trim())
 const SLOT_COL = 'slots'
 const SESSION_COL = 'parking_sessions'
 const LINE_USERS_COL = 'line_users'

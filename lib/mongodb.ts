@@ -1,6 +1,6 @@
 import { MongoClient, Db } from 'mongodb'
 
-const uri = process.env.MONGODB_URI!
+const uri = process.env.MONGODB_URI
 const dbName = process.env.MONGODB_DATABASE || 'smartpark'
 
 let client: MongoClient
@@ -12,6 +12,7 @@ declare global {
 }
 
 async function getDb(): Promise<Db> {
+  if (!uri) throw new Error('MONGODB_URI is not configured in environment variables.')
   if (db) return db
 
   if (process.env.NODE_ENV === 'development') {
