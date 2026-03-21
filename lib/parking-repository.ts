@@ -15,7 +15,7 @@ export async function ensureDefaultSlots() {
   for (const name of SLOTS) {
     if (!names.includes(name)) {
       const now = nowIso()
-      await db.collection(SLOT_COL).insertOne({ _id: `slot_${name}`, slot_name: name, status: 'vacant', created_at: now, updated_at: now, updated_by: 'system' })
+      await db.collection(SLOT_COL).insertOne({ _id: `slot_${name}` as any, slot_name: name, status: 'vacant', created_at: now, updated_at: now, updated_by: 'system' })
     }
   }
 }
@@ -56,7 +56,7 @@ export async function createSession(slotName: string, lineUserId = '', duration?
   const db = await getDb()
   const now = nowIso()
   const doc = {
-    _id: randomId('session'),
+    _id: randomId('session') as any,
     slot_name: slotName,
     line_user_id: lineUserId,
     start_time: now,
