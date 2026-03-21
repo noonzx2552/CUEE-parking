@@ -54,10 +54,13 @@ export default function Home() {
     return () => clearInterval(id)
   }, [])
 
-  // Fetch app config + LIFF id
+  const lineClientId = useRef('')
+
+  // Fetch app config
   useEffect(() => {
     fetch('/api/app-config').then(r => r.json()).then(cfg => {
       if (cfg.LINE_LIFF_ID) liffId.current = cfg.LINE_LIFF_ID
+      if (cfg.LINE_CLIENT_ID) lineClientId.current = cfg.LINE_CLIENT_ID
     }).catch(() => {})
   }, [])
 
@@ -138,9 +141,12 @@ export default function Home() {
   }, [confirmed, exitDone, lineUserId])
 
   function handleLineAdd() {
-    if (lineConnected || !window.liff) return
-    const redirectUri = window.location.href.split('?')[0]
-    window.liff.login({ redirectUri })
+    if (lineConnected) return
+    const clientId = lineClientId.current
+    if (!clientId) { showToast('⚠️ ยังไม่ได้ตั้งค่า LINE Client ID'); return }
+    const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/line')
+    const stateParam = encodeURIComponent(window.location.href)
+    window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${stateParam}&scope=profile%20openid`
   }
 
   function restoreSessionFromDb(uid: string) {
