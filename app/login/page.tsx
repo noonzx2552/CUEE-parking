@@ -77,7 +77,7 @@ export default function CheckinPage() {
       }
       const redirectUri = encodeURIComponent(window.location.origin + '/api/auth/line')
       const stateParam = encodeURIComponent(window.location.href)
-      window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${stateParam}&scope=profile%20openid`
+      window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${stateParam}&scope=profile%20openid&bot_prompt=normal`
     } catch {
       setErrorMsg('เกิดข้อผิดพลาดในการเชื่อมต่อ LINE')
       setState('error')
