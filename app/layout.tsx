@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'SmartPark CUEE',
+  title: 'Spotsync',
   description: 'ระบบที่จอดรถอัจฉริยะ CUEE',
 }
 
