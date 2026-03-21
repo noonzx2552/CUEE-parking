@@ -10,8 +10,11 @@ interface Session {
 interface User {
   id: string; name: string; type: string; joined: string; parked_at: string | null
 }
+interface LogEntry {
+  time: string; type: 'enter' | 'exit'; slot: string; user: string; source: string; note: string
+}
 
-type Tab = 'status' | 'history' | 'users'
+type Tab = 'status' | 'history' | 'users' | 'logs'
 
 function formatDuration(start: string, end?: string) {
   const ms = new Date(end || new Date()).getTime() - new Date(start).getTime()
@@ -34,6 +37,7 @@ export default function AdminPage() {
   const [slots, setSlots] = useState<Slot[]>([])
   const [history, setHistory] = useState<Session[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState<string | null>(null)
   const [toast, setToast] = useState('')
 
@@ -55,6 +59,11 @@ export default function AdminPage() {
     if (r.ok) { const d = await r.json(); setUsers(d.users || []) }
   }, [])
 
+  const loadLogs = useCallback(async () => {
+    const r = await fetch('/api/admin/logs?limit=200')
+    if (r.ok) { const d = await r.json(); setLogs(d.logs || []) }
+  }, [])
+
   useEffect(() => {
     fetch('/api/admin/status').then(r => {
       if (r.status === 401) setAuthed(false)
@@ -72,6 +81,7 @@ export default function AdminPage() {
     if (!authed) return
     if (tab === 'history') loadHistory()
     if (tab === 'users') loadUsers()
+    if (tab === 'logs') loadLogs()
   }, [tab, authed, loadHistory, loadUsers])
 
   async function handleLogin(e: React.FormEvent) {
@@ -158,9 +168,9 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="tabs">
-        {(['status', 'history', 'users'] as Tab[]).map(t => (
+        {(['status', 'history', 'users', 'logs'] as Tab[]).map(t => (
           <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'status' ? '🅿️ สถานะ' : t === 'history' ? '📋 ประวัติ' : '👥 ผู้ใช้'}
+            {t === 'status' ? '🅿️ สถานะ' : t === 'history' ? '📋 ประวัติ' : t === 'users' ? '👥 ผู้ใช้' : '📝 Log'}
           </button>
         ))}
       </div>
@@ -305,6 +315,38 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* ── TAB: LOGS ────────────────────────────────────────── */}
+        {tab === 'logs' && (
+          <div>
+            <div className="section-header">
+              <span>Activity Log ({logs.length} รายการ)</span>
+              <button className="btn-refresh" onClick={loadLogs}>↻ รีเฟรช</button>
+            </div>
+            <div className="log-list">
+              {logs.length === 0 && <div className="log-empty">ไม่มีข้อมูล</div>}
+              {logs.map((l, i) => (
+                <div key={i} className={`log-item ${l.type}`}>
+                  <div className={`log-icon ${l.type}`}>
+                    {l.type === 'enter' ? '🚗' : '↩️'}
+                  </div>
+                  <div className="log-body">
+                    <div className="log-main">
+                      <span className="log-note">{l.note}</span>
+                      <span className="slot-pill">{l.slot}</span>
+                      <span className={`src-tag`}>{l.source}</span>
+                    </div>
+                    <div className="log-meta">
+                      <span className="log-time">{formatTime(l.time)}</span>
+                      {l.user !== '-' && <span className="log-user">👤 {l.user.length > 20 ? l.user.slice(0, 18) + '…' : l.user}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
     </>
   )
@@ -404,6 +446,20 @@ const dashStyle = `
   .none-tag{color:#333355}
   .user-name{font-weight:600}
   .date-cell{color:#555577;font-size:12px}
+
+  .log-list{display:flex;flex-direction:column;gap:6px}
+  .log-empty{text-align:center;color:#333355;padding:32px}
+  .log-item{display:flex;align-items:flex-start;gap:12px;background:rgba(12,18,32,.6);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 14px;transition:background .15s}
+  .log-item:hover{background:rgba(12,18,32,.9)}
+  .log-item.enter{border-left:3px solid rgba(88,166,255,.5)}
+  .log-item.exit{border-left:3px solid rgba(248,81,73,.5)}
+  .log-icon{font-size:18px;line-height:1;margin-top:2px;flex-shrink:0}
+  .log-body{flex:1;min-width:0}
+  .log-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+  .log-note{font-size:13px;font-weight:600;color:#c9d1d9}
+  .log-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .log-time{font-size:11px;color:#555577}
+  .log-user{font-size:11px;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
 
   @media(max-width:600px){
     .stats-row{grid-template-columns:repeat(2,1fr)}
